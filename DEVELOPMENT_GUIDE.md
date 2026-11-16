@@ -45,6 +45,9 @@ Backend
   Alembic migration.
 - No network call outside `intelligence/research` (through `UrlGuard`), `providers`,
   `deploy` and `scm`. A test enforces this by import and socket checks.
+- Provider-specific identifiers appear only in provider adapters (`providers/`), their
+  tests and `config/`. Core orchestration, business logic and generated-project logic use
+  interfaces and task names only; switching providers is a configuration change.
 - Structured logging through the platform logger (redaction is applied there); no `print`.
 - Errors that the owner must see carry a code, a plain-language message and suggested next
   actions.
@@ -58,7 +61,25 @@ Data files
 - Taxonomies, archetypes, scoring weights, limits and prices are YAML validated by schema
   on load. Changing behaviour through them must not need code changes.
 
-## 4. Testing conventions
+## 4. Testing
+
+### Policy
+
+| Command | When it must be run |
+|---------|---------------------|
+| `make check` | Before every commit. Fast checks: lint, types, unit tests, frontend type check and unit tests. |
+| `make sandbox-test` | Whenever sandbox, resolver, scoring-container, agent-container or any other isolation behaviour changes, and before completing any milestone that touches them. |
+| `make e2e` | At the milestone gates that define end-to-end criteria (M4A, M4H, M4B, M5, M6, M7) and in CI. |
+| Full applicable regression and security suites | Before declaring any milestone or checkpoint complete: every suite listed for it and for earlier milestones in `IMPLEMENTATION_PLAN.md` ("Cross-cutting test suites"). |
+
+- A milestone is complete only when its acceptance criteria pass; the handoff records which
+  commands were run and their results.
+- Never weaken, skip, delete or special-case a test to manufacture success. A test that
+  cannot pass is a reported failure or blocker, not something to work around.
+- The real coding-agent acceptance run (M6.9) is owner-directed and is not part of
+  unattended CI.
+
+### Conventions
 
 - Unit tests sit next to the feature area under `backend/tests/<module>/`.
 - Fixtures: JD fixtures in `backend/tests/fixtures/jds/` (Scenarios A–C, adversarial,
@@ -84,11 +105,41 @@ Data files
 
 New recipes start as a hand-built working reference project; extract the recipe from it.
 
-## 6. Security checklist for every change
+## 6. Security
+
+### Execution isolation
+
+Treat all of the following as potentially untrusted execution:
+
+- generated code (model-written, agent-written or imported), including recipe code that
+  has been modified;
+- dependency installation;
+- package lifecycle scripts (install, build and post-install hooks);
+- frontend builds;
+- test and evaluation commands that come from a generated project.
+
+Rules:
+
+- Run each only inside the isolation boundary assigned to it in `ARCHITECTURE.md` §12:
+  the sandbox for generated code, tests and frontend builds; the resolver container for
+  dependency resolution; the scoring container for platform evaluation; the agent container
+  for automated coding agents. Never run them in the platform process or on the host.
+- The dependency resolver must not have access to project source, platform credentials, or
+  any network destination other than the configured package index.
+- Lifecycle scripts stay disabled and source builds are refused: wheels only for Python,
+  `--ignore-scripts` for Node.
+- Follow the approved dependency workflow in `ARCHITECTURE.md` §7.10 exactly (hash-pinned
+  profile images, policy check, index-only resolution, offline hash-verified install,
+  platform-owned Dockerfile). Changing it is an architecture change needing owner approval.
+- Critical metrics come from platform-owned evaluators, not from files a generated project
+  writes about itself.
+
+### Checklist for every change
 
 - Does it read untrusted text? Then it goes through `PromptEnvelope` or the sanitiser, and
   its output is schema-validated.
-- Does it execute anything generated? Then it runs through `SandboxDriver`, nowhere else.
+- Does it execute anything generated, install anything, or build a frontend? Then it runs
+  inside the isolation boundary above, nowhere else.
 - Does it accept work from a coding agent? Then it goes through the import pipeline
   (`ARCHITECTURE.md` §7.8) whatever tool produced it.
 - Does it assume a local path or same-host worker? Use the artifact store and job backend.
@@ -108,6 +159,8 @@ New recipes start as a hand-built working reference project; extract the recipe 
 ## 8. Session checklist for a coding assistant
 
 1. Read the Status section of `IMPLEMENTATION_PLAN.md`; confirm the work is authorised.
-2. Do the work for one work item at a time; run `make check`.
+2. Do the work for one work item at a time; run `make check`, plus the suites the testing
+   policy requires for what you changed.
 3. Update documents affected by the change.
-4. Update Status; at a stage boundary add a handoff-log row and stop.
+4. Update Status. At the end of a milestone, checkpoint or handoff stage, write the handoff
+   from the template in `AGENTS.md` and stop.

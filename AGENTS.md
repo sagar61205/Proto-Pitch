@@ -16,8 +16,13 @@ learn something a successor needs, write it into the documents below.
 ## Authorisation rules
 
 - **Do not write application code until the Status section says a milestone is authorised.**
-  Work only on the authorised milestone.
-- Stop at each handoff-stage boundary (H1 → H2 → H3) and add a row to the handoff log.
+  Work only on the authorised milestone. M4 is delivered as four separately authorised
+  checkpoints in the order M4A, M4H, M4S, M4B.
+- M5 and M6.9 (the real coding-agent acceptance run) are mandatory release gates. Passing
+  an earlier checkpoint never substitutes for them, and no checkpoint relaxes sandboxing,
+  platform-owned evaluation, claim validation, cost limits, versioning or owner approvals.
+- Stop at each handoff-stage boundary (H1 → H2 → H3) and at the end of each authorised
+  milestone or checkpoint; write a handoff using the template below.
 - The owner chooses which coding model works on which stage. Do not switch models, spawn
   more expensive models, or assume you can, without the owner's approval.
 - Do not create remote repositories, deploy, provision cloud resources, call paid APIs, or
@@ -27,9 +32,14 @@ learn something a successor needs, write it into the documents below.
 
 ## Invariants — never break these
 
-1. **Model independence.** No provider or model name in application code, tests or
-   generated projects' logic. Names live in `config/providers.yaml`. The platform must not
-   depend on the assistant that built it.
+1. **Model independence.**
+   - Provider-specific identifiers (provider names, model names, endpoints, SDK imports)
+     are permitted only in provider adapters, adapter tests and configuration files.
+   - Core orchestration, business logic and generated-project logic stay provider-agnostic:
+     they use the provider and coding-agent interfaces and task names, never a vendor.
+   - Switching providers is a configuration change and must not require editing core
+     application code.
+   - The platform must not depend on the assistant that built it.
 2. **Zero-API operation.** The application starts and the deterministic pipeline runs with
    no keys, no local model and no model downloads.
 3. **No silent paid usage and no silent fallback.** Paid providers are opt-in, budgeted,
@@ -66,6 +76,36 @@ learn something a successor needs, write it into the documents below.
   dependency without a stated reason recorded in the decision log.
 - When behaviour or interfaces change, update the relevant document in the same change.
 
+## Handoff template
+
+At every stop point, write this to `docs/handoffs/<YYYY-MM-DD>-<milestone>.md`, add a
+one-line row to the handoff log in `IMPLEMENTATION_PLAN.md`, and repeat it in your final
+message. Fill every field; write "none" rather than leaving one empty. Report results as
+they are — a failing or unrun test is stated as such.
+
+```markdown
+# Handoff — <date> — <stage and milestone or checkpoint>
+
+## Completed milestone and work items
+<milestone id; each work-item id with done / partial / not started>
+
+## Last commit hash
+<full hash> on branch <name>; pushed: yes / no
+
+## Files modified
+<paths, grouped by purpose>
+
+## Tests executed and their results
+<each command run → passed / failed / skipped counts; suites not run and why>
+
+## Known failures and blockers
+<failing tests, open defects, missing approvals, environment problems>
+
+## Exact next authorized task
+<milestone and work-item id exactly as authorised in the Status section, or
+"None — awaiting owner authorisation of <milestone>">
+```
+
 ## Keeping the handoff documents current
 
 | Document | Update when |
@@ -76,5 +116,6 @@ learn something a successor needs, write it into the documents below.
 | `AGENTS.md` | Any change to rules or invariants (owner approval required) |
 
 Documents still to be written, with the milestone that owns each: `CONTRIBUTING.md` and
-`TESTING_GUIDE.md` (M1), `PROTOTYPE_RECIPE_GUIDE.md` (M4), `MODEL_PROVIDER_GUIDE.md` (M6),
-`DEPLOYMENT_GUIDE.md` and `API_REFERENCE.md` (M7).
+`TESTING_GUIDE.md` (M1), `PROTOTYPE_RECIPE_GUIDE.md` (M4B), `MODEL_PROVIDER_GUIDE.md`
+(coding-agent section started in M4H, completed in M6), `DEPLOYMENT_GUIDE.md` and
+`API_REFERENCE.md` (M7).
