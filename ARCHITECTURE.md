@@ -1,6 +1,8 @@
 # ProtoPitch — Architecture
 
-Status: **proposed, awaiting owner approval.** No application code exists yet.
+Status: **revision 2, awaiting owner approval.** Revision 1 was approved in principle on
+2026-11-16 subject to ten revisions; they are incorporated here and listed in §11
+(decisions A15–A24 and the revised A4, A6, A9, A12, A13). No application code exists yet.
 Source specification: `ProtoPitch_Complete_Master_Prompt.pdf` (cited as §N).
 Rationale for departures from the specification: `docs/SPEC_REVIEW.md`.
 
@@ -26,9 +28,12 @@ is built but does not choose algorithms or frameworks.
    no key and no download. Models improve results; they are never required.
 2. **Evidence or label.** Every statement about a company or the candidate is a `Claim` with
    a kind (`VERIFIED`, `USER_PROVIDED`, `INFERRED`, `HYPOTHESIS`) and source references.
-3. **Measured or absent.** Metrics reach reports only from result files written by sandboxed
-   evaluation runs.
-4. **Generators write, the sandbox executes.** Nothing generated runs outside the sandbox.
+3. **Claims trace to records.** Performance claims must match evaluation records written by
+   sandboxed runs; business-impact statements must be labelled estimates with assumptions.
+   Ordinary technical numbers (versions, dates, configuration) are unrestricted.
+4. **Generated code runs only inside an isolation boundary** — the local sandbox, an agent
+   container, or a dedicated cloud service — never in the platform process and never beside
+   platform credentials (§12).
 5. **Approval before side effects.** Building, paid calls, corpus use, repository creation,
    deployment and deletion each require a recorded approval of the exact payload.
 6. **Extension by registration.** New capabilities, recipes, providers, sandbox drivers and
@@ -72,7 +77,7 @@ package. There are no microservices.
 | Layer | Choice | Notes |
 |-------|--------|-------|
 | Platform frontend | React, TypeScript, Vite, Tailwind | As §17. |
-| Demo frontend | Prebuilt **demo shell** (React) driven by a manifest | Built once with the platform; copied into each generated project. |
+| Demo frontend | G1/G2: prebuilt **demo shell** (React) driven by a manifest. G3: custom frontend when the problem needs one | Shell is built once with the platform; custom frontends build in the `web` sandbox profile. |
 | Backend | Python 3.12, FastAPI, Pydantic v2 | 3.12 for wheel availability across ML libraries. |
 | Persistence | SQLAlchemy 2 + Alembic; SQLite (WAL) locally, PostgreSQL optional | No raw SQL in feature code. |
 | Artifacts | `ArtifactStore` interface: local filesystem, Google Cloud Storage | Content-hashed. |
@@ -141,12 +146,17 @@ All entities carry `id` (UUID), timestamps and, where relevant, `project_id` and
 | `JDDocument` | Original JD, immutable | raw text, URL, language, content hash |
 | `JDAnalysis` | Structured reading of the JD | role, seniority, location, domain, responsibilities, skills (required / preferred), capabilities, objectives; each item has `evidence: EXPLICIT or INFERRED`, confidence, text span, analyser id |
 | `Source` | A retrieved or supplied document | type, URL, retrieved_at, hash, permission basis, licence |
-| `Claim` | A statement backed by sources | text, kind, source ids, confidence, produced_by |
+| `Source` snapshot | Stored copy of what was retrieved | kept so evidence stays checkable after the page changes |
+| `Claim` | A statement about the company | text, **kind** (`VERIFIED`, `USER_PROVIDED`, `INFERRED`, `HYPOTHESIS`), evidence ids, premise claim ids, confidence, produced_by |
+| `Evidence` | Traceable support for a claim | source id, exact quoted excerpt, locator (offsets or section), snapshot hash, retrieved_at, source authority (`official`, `third_party`, `user_document`) |
 | `ResearchReport` | Company context | claim ids, limitations, coverage |
 | `CandidateProfile`, `ProfileItem` | Editable candidate record | item type (skill, experience), text, **evidence level**: `VERIFIED_PRODUCTION`, `VERIFIED_POC`, `KNOWLEDGE`, `DEMONSTRATED_IN_PROTOPITCH`, `UNVERIFIED` |
 | `FitAssessment` | Candidate vs JD | per-requirement match with profile item and level |
 | `Opportunity` | Candidate prototype idea | problem statement, archetype, claim ids, `ProblemSpec`, 12 criterion scores, total, selected flag |
-| `ArchitectureProposal` | What will be built | version, opportunity, recipe plan, components, technology decisions (selected and excluded, with reasons), data plan, evaluation plan, diagram source, limitations, effort and cost estimate, JD coverage map |
+| `ArchitectureProposal` | What will be built | version, opportunity, **origin** (`deterministic`, `model`, `model_revised`, `owner_modified`), components (registry or novel), technology decisions (selected and excluded, with reasons), required generation mode, data plan, evaluation plan, diagram source, limitations, effort and cost estimate, JD coverage map, validation report, capability gaps |
+| `CapabilityGap` | A required capability G1 cannot build | capability, JD evidence, status (`G2_FEASIBLE`, `G3_FEASIBLE`, `NOT_FEASIBLE`), reason, options offered, owner's choice |
+| `WorkOrder` | A coding-agent handoff | build, round, mode (`manual`, `interactive`, `automated`), allowed and protected paths, acceptance checks, budgets, status, import report |
+| `QuantClaim` | A performance or business-impact statement found in generated text | text, location, type, matched evaluation record or `UNSUPPORTED`, disposition |
 | `Approval` | Recorded authorisation | kind, payload hash, decision, comment, time |
 | `BuildRun` | One generation attempt | proposal, generation mode, status, budgets, workspace ref |
 | `Job`, `Step` | Execution records | type, status, lease, attempt, input hash, log ref |
@@ -197,10 +207,23 @@ class EvidenceExtractor(Protocol):
 Collectors: user documents, user URLs, official-site crawler (home page, sitemap, product,
 documentation, blog, careers; depth and page limits; `robots.txt` honoured), cache. All
 fetching passes through `security.UrlGuard`. An optional search collector exists only as an
-interface; no search API is required. Extraction is extractive by default: passages relevant
-to the JD's capabilities become `VERIFIED` claims quoting their source. Anything produced
-without a source is stored as `HYPOTHESIS`. If nothing can be collected, the report says so
-and the pipeline continues.
+interface; no search API is required. If nothing can be collected, the report says so and
+the pipeline continues.
+
+**Claim kinds and what each requires**
+
+| Kind | Meaning | Requirement (machine-checked) |
+|------|---------|-------------------------------|
+| `VERIFIED` | A statement the source itself makes | At least one `Evidence` record whose excerpt is found verbatim in the stored snapshot at the recorded locator. The claim text is the quote or a fixed-template restatement of it ("The company states that …"). |
+| `USER_PROVIDED` | Stated by the owner | Recorded as such; no source needed |
+| `INFERRED` | A broader conclusion drawn from other claims | Lists its premise claims (which must be `VERIFIED` or `USER_PROVIDED`) and the rule or model that drew it |
+| `HYPOTHESIS` | Plausible but unsupported | Anything that fails the checks above |
+
+`VERIFIED` means "this source says this", not "this is true"; the UI shows the source, its
+authority and retrieval date beside every verified claim. A model may summarise or
+generalise, but its output can be `VERIFIED` only for the part that passes the verbatim
+check; the generalisation is stored as `INFERRED` citing that claim. A claim whose evidence
+no longer validates (missing snapshot, hash mismatch) is downgraded automatically.
 
 ### 7.3 Opportunities — `intelligence/opportunities`
 
@@ -222,6 +245,12 @@ relevance, company relevance, skills coverage, business value, credibility, feas
 (recipe exists), data availability, evaluability, demo impact, cost, candidate alignment,
 generation time. The top result is selected; the rest are stored for regeneration and
 comparison.
+
+**No silent substitution.** Feasibility influences ranking but cannot rescue an irrelevant
+idea: an opportunity is selectable only if it passes a minimum JD-relevance gate (it
+exercises the JD's primary capabilities). If the best relevant opportunity is not buildable
+in G1, it is still the recommendation and the proposal carries a gap report (§7.5); a
+buildable but less relevant alternative is offered as an explicit, labelled choice.
 
 ### 7.4 Capability registry — `decision/registry`
 
@@ -280,7 +309,48 @@ Steps:
    estimate, JD coverage map (covered / not covered), limitations.
 5. **Diagram** — Mermaid source generated from the component graph.
 
-A model may add narrative explanation; it cannot change the selected components.
+Steps 1–5 are the **deterministic baseline**. It always runs and is the whole engine when
+no model is configured.
+
+**Model architecture reasoning.** When the `architecture_reasoning` task is routed to a
+model, an `ArchitectureReasoner` receives the `ProblemSpec`, registry, recipe catalogue,
+constraints and the baseline, and may propose additional architectures, compare them, and
+revise them in response to owner modifications. It may select components outside the
+baseline and outside the recipe catalogue (`novel` components with declared capability,
+dependencies, data and resource needs).
+
+```python
+class ArchitectureReasoner(Protocol):
+    def propose(self, ctx: ReasoningContext) -> list[ArchitectureCandidate]: ...
+    def revise(self, candidate: ArchitectureCandidate, change: ChangeRequest) -> ArchitectureCandidate: ...
+class ArchitectureValidator:
+    def validate(self, candidate: ArchitectureCandidate, ctx: ValidationContext) -> ValidationReport: ...
+```
+
+Every candidate, whatever its origin, passes the same validator:
+
+| Check | Rejects or conditions a candidate when |
+|-------|----------------------------------------|
+| Capability | required capabilities are not covered; a component maps to no registered capability (allowed, but flagged `unregistered` and G3-only) |
+| Justification | a technology has no reason tied to `ProblemSpec` properties, or its only reason is that the JD lists it |
+| Feasibility | no available generation mode can build it (G1 if all components are recipes; G2 if the rest fit extension points; otherwise G3, which needs a configured generator or a manual handoff) |
+| Resources | sandbox profile limits, build time, image size or budget would be exceeded |
+| Security | dependencies fail the dependency policy; runtime network, credentials or privileged access are required; data or licence terms are unclear |
+| Evaluability | no measurable evaluation plan exists |
+
+Outcomes: `ACCEPTED`, `ACCEPTED_WITH_CONDITIONS` (for example "requires G3" or "requires
+approval of two dependencies") or `REJECTED`, each with reasons. The review screen shows the
+recommended proposal, its origin, the validation report and the alternatives, always
+including the deterministic baseline. When a valid model proposal exists it is the default
+recommendation. Model output is schema-validated data; the justification check is
+structural and cannot prove a reason is sound, which is why the owner's approval remains
+the gate.
+
+**Capability gaps.** For every required capability the proposal records coverage. Where G1
+cannot build it, a `CapabilityGap` states what is missing and offers, where feasible:
+build with G2; build with G3 (automated if a generator is configured, otherwise by manual
+handoff, §7.8); choose a different relevant opportunity; or stop. The owner chooses. The
+platform never builds something else and presents it as the answer.
 
 ### 7.6 Approval checkpoint — `api/approvals`
 
@@ -349,8 +419,10 @@ class Generator(Protocol):
 - **G2 `SlotFiller`** — after G1, asks a model for code for declared extension points only.
   Each slot has a typed interface and tests; a failing slot reverts to the default and the
   reversion is recorded.
-- **G3 `AgentGenerator`** — hands the approved architecture and an empty project skeleton to
-  a coding model or authorised coding agent with file-edit access to the workspace only.
+- **G3 `AgentGenerator`** — hands the approved architecture and a project skeleton to a
+  coding model or coding agent through the execution contract below. G3 may build components
+  no recipe covers and, when the problem needs it, a **fully custom frontend** in `web/`
+  instead of the demo shell.
 
 Generated project layout (its own Git repository, in `data/workspaces/<project>/<version>/`):
 
@@ -368,6 +440,68 @@ Dockerfile  README.md  LICENSE  protopitch.lock.json
 `protopitch.lock.json` records recipes and versions, parameters, seeds, generation mode and
 any model involvement, so a build is reproducible.
 
+#### Coding-agent execution contract
+
+The contract is vendor-neutral: a **work order** goes out, a **workspace change set** comes
+back. Any environment that can read files and edit a directory can fulfil it.
+
+Work order, written by ProtoPitch into the workspace:
+
+| File | Content |
+|------|---------|
+| `handoff/WORK_ORDER.md` | Objective, approved architecture, components to implement, constraints, allowed and protected paths, dependency policy, how to run checks, definition of done |
+| `handoff/work_order.json` | The same, machine-readable and schema-versioned: ids, round, paths, acceptance checks, budgets |
+| `AGENTS.md` (workspace root) | Standing rules for the generated project. Additional copies under other conventional instruction-file names are configurable. |
+| `acceptance/` | Platform-owned check definitions |
+| `handoff/FEEDBACK.md` | Repair rounds only: failing check output, sanitised and truncated |
+
+Return: file changes on branch `handoff/<work-order-id>`, plus an optional
+`handoff/RESULT.json` (summary, requested dependencies, notes) that is treated as untrusted
+information, never as proof of success.
+
+Transport: the local workspace path; an exported Git bundle or archive that is imported
+back (for cloud or remote coding environments); or a private remote repository, which needs
+approval.
+
+| Mode | Who runs the agent | Credentials | What ProtoPitch does |
+|------|--------------------|-------------|----------------------|
+| `manual` | The owner, in any tool, at any time | Whatever the owner is signed into in that tool; ProtoPitch makes no calls | Exports the work order, waits, imports on request |
+| `interactive` | The owner, with the workspace open in a coding environment | As above | Additionally exposes `protopitch handoff check`, which runs the acceptance checks in the sandbox and returns results, so the owner or the agent can iterate before submitting |
+| `automated` | ProtoPitch, headless, after approval | An API credential that permits unattended use, configured explicitly. A consumer chat subscription is never assumed to be one. | Runs a configured command in an **agent container** with time and spend limits, then imports |
+
+Automated agents are defined in configuration, not code:
+
+```yaml
+# config/coding_agents.yaml — one generic command adapter; entries are examples of data
+agents:
+  example-agent:
+    command: ["<cli>", "<non-interactive flag>", "--cwd", "{workspace}", "{work_order_md}"]
+    pass_env: ["<NAME_OF_API_KEY_VARIABLE>"]
+    egress_allow: ["<provider api host>"]
+    timeout_minutes: 30
+    cost_reporting: reported | unknown
+```
+
+Adding or changing a coding environment is a configuration entry (or nothing at all for
+manual and interactive modes).
+
+Import pipeline, identical for every mode and every tool:
+
+1. **Scope** — changes outside allowed paths are rejected; protected paths (`acceptance/`,
+   `Dockerfile`, lock files, evaluation results, disclosure text) are restored from platform
+   copies.
+2. **Secret scan** of the change set.
+3. **Dependency diff** → resolution workflow (§7.10); new packages may need approval.
+4. **Full check sequence** in the sandbox (§7.9). Evaluation results come only from that
+   run.
+5. **Custom frontend**, if present: offline build in the `web` profile, load smoke test, and
+   presence of the required disclosures.
+6. On failure, a feedback work order is issued; rounds count against the repair limit.
+
+While work is outside ProtoPitch the build has sub-status `AWAITING_EXTERNAL_WORK`; the
+project stays in `GENERATING`, no lease is held and nothing is consumed. Trust boundaries
+for each mode are in §12.
+
 ### 7.9 Validation and repair — `generation/repair`, `evaluation/`
 
 Checks run in the sandbox in a fixed order; each is flagged critical or advisory:
@@ -383,9 +517,23 @@ Every attempt is stored. When limits are hit the build is `FAILED`, partial work
 the diagnostics name the failing check and suggested next actions.
 
 Evaluation results enter the platform only as `eval/results.json` written inside the
-sandbox, validated against a schema, with run id, seed and data hash. Reports and outreach
-render numbers from these records. A lint rejects any generated document containing a
-number that is not in the results.
+sandbox, validated against a schema, with run id, seed and data hash. Templates insert
+metrics by record reference, so template-written text is exact by construction.
+
+**Quantitative claim validation** applies to all generated prose (documents, demo copy,
+outreach), including text written by a model or coding agent. A detector (metric lexicon,
+comparative and impact phrasing, numeric patterns) extracts `QuantClaim`s of two types:
+
+| Type | Example | Rule |
+|------|---------|------|
+| Performance | "NDCG@10 of 0.41", "outperforms the baseline by 12%" | Must match an evaluation record for this build (metric, value within rounding, comparison computable from records) and carry its kind and data context (for example "on synthetic data") |
+| Business impact | "would reduce churn by 5%", "saves 10 hours a week" | Allowed only as a labelled estimate or simulated scenario with stated assumptions, tied to an `ESTIMATE` or `SIMULATED` record; never phrased as an achieved outcome |
+
+Unsupported claims block `READY_FOR_REVIEW` (documents, demo) or the draft (outreach) until
+corrected or removed. Everything else is permitted without validation: versions, dates,
+configuration values, dataset sizes, parameter values, ports, counts of components. The
+detector is heuristic; the review screen therefore lists every detected claim with its
+supporting record so the owner can confirm nothing was missed.
 
 ### 7.10 Sandbox — `sandbox/`
 
@@ -405,11 +553,49 @@ class SandboxDriver(Protocol):
 | Privileges | all capabilities dropped, `no-new-privileges`, no Docker socket |
 | Resources | CPU, memory and process limits from the recipe; wall-clock kill |
 | Environment | empty; no host variables passed |
-| Images | prebuilt profiles with pinned dependencies: `core` (Python, NumPy, Pandas, scikit-learn, SciPy, FastAPI, pytest, rank-bm25, FAISS, LangGraph), `torch` (adds CPU PyTorch; opt-in) |
-| Extra dependencies | allowlist, hash-pinned, wheels only, installed in a separate resolver container that has index access but no workspace code and no secrets |
+| Images | prebuilt profiles with pinned dependencies: `core` (Python, NumPy, Pandas, scikit-learn, SciPy, FastAPI, pytest, rank-bm25, FAISS, LangGraph), `torch` (adds CPU PyTorch; opt-in), `web` (Node and an offline package cache, for custom frontends) |
+| Extra dependencies | policy-checked, hash-pinned, wheels only; resolved in a separate container, installed offline (workflow below) |
 
 `SubprocessSandboxDriver` exists for platform unit tests only and refuses to run generated
 code unless an explicit unsafe flag is set.
+
+**Docker is needed only to execute generated code.** The platform starts without it; JD
+analysis, research, opportunities, architecture reasoning, review and approval never touch
+a sandbox driver. A capability probe reports "generation unavailable: no sandbox driver"
+and the build action is disabled with that explanation.
+
+#### Dependency resolution and installation
+
+1. **Profile images (set-up time, platform-controlled).** Each profile in
+   `sandbox-images/<profile>/` has `requirements.in` and a hash-pinned, multi-platform
+   `requirements.lock` (`uv pip compile --universal --generate-hashes`). `make
+   sandbox-images` builds them from platform Dockerfiles; this is the only step that needs
+   general network access and it runs no generated code. Images are tagged by lock hash and
+   the image digest is recorded on each `BuildRun`.
+2. **Declare.** A generated project lists its dependencies in `requirements.in`. The plan
+   step computes *required minus profile*.
+3. **No extras (all G1 builds).** Everything runs in the profile image with no network. The
+   project's own `requirements.lock` is the matching subset of the profile lock, so the
+   project installs identically outside ProtoPitch.
+4. **Extras — policy.** Each extra package is checked against
+   `config/dependency_policy.yaml`: pre-approved, denied, or needing owner approval (name,
+   version, licence shown).
+5. **Extras — resolve.** A resolver container (minimal image, read-only mount of the
+   requirements file only — no workspace code, no secrets) reaches only the configured
+   package index through an allowlisting proxy. It compiles a hash-pinned lock constrained
+   by the profile lock and downloads wheels with `--only-binary=:all: --require-hashes`
+   into a wheelhouse, then runs a vulnerability audit. Packages without wheels are refused
+   (`dependency_unavailable`), because source builds execute code at install time.
+6. **Extras — install.** In a sandbox container with no network, the wheelhouse is mounted
+   read-only and installed with `--no-index --find-links --require-hashes` into a per-build
+   environment volume. Wheelhouses are cached by lock hash.
+7. **Node (custom frontends only).** The `web` profile carries Node and an offline cache of
+   a pinned package set; builds use `npm ci --offline --ignore-scripts`. Extra packages
+   follow steps 4–6 with the registry proxy, lockfile integrity hashes and scripts disabled.
+8. **Deployment image.** The project `Dockerfile` is a platform template and a protected
+   path. The image is built from the lock and wheelhouse without network access.
+9. **Failures.** Dependency failures are classified; fixers may change versions only by
+   re-running resolution; attempts are bounded by the repair limit.
 
 ### 7.11 Providers — `providers/`
 
@@ -420,12 +606,15 @@ class LLMProvider(Protocol):
     def estimate(self, request: LLMRequest) -> CostEstimate: ...
     def complete(self, request: LLMRequest) -> LLMResponse: ...   # supports schema-constrained output
 
-class CodingAgentProvider(Protocol):
-    def run(self, task: AgentTask, workspace: Workspace, budget: Budget) -> AgentResult: ...
+class CodingAgentRunner(Protocol):          # manual, interactive, automated (§7.8 contract)
+    mode: Literal["manual", "interactive", "automated"]
+    def dispatch(self, order: WorkOrder, workspace: Workspace, budget: Budget) -> DispatchHandle: ...
+    def collect(self, handle: DispatchHandle) -> ChangeSet: ...
 ```
 
 Adapters: `none` (default), `mock`, `ollama`, `anthropic`, `openai`, `gemini`,
-`openai_compatible`, and coding-agent adapters. Routing is configuration:
+`openai_compatible`. Coding agents use the separate execution contract of §7.8, configured
+in `config/coding_agents.yaml`. Routing is configuration:
 
 ```yaml
 # config/providers.yaml — model names appear here and nowhere else
@@ -433,7 +622,7 @@ tasks:
   jd_analysis:            { use: deterministic }
   research_synthesis:     { use: deterministic }
   opportunity_generation: { use: deterministic }
-  architecture_reasoning: { use: deterministic }
+  architecture_reasoning: { use: deterministic }   # a model here may propose and revise architectures (§7.5)
   code_generation:        { use: none }
   debugging:              { use: none }
   evaluation_judge:       { use: none }
@@ -453,8 +642,9 @@ Rules enforced by the router:
   `deterministic`; a deterministic fallback is recorded on the artifact and shown.
 - Every call is written to the `ProviderCall` ledger with estimated and actual cost. Model
   spend is reported separately from hosting spend.
-- A consumer chat subscription is not an API credential; the coding-agent adapters document
-  what each tool's terms allow and require the owner to enable them.
+- A consumer chat subscription is not an API credential. Runtime adapters and automated
+  coding agents need credentials that permit programmatic, unattended use. Manual and
+  interactive handoffs need none, because the owner operates the tool.
 
 ### 7.12 Deployment — `deploy/`
 
@@ -466,12 +656,27 @@ class DeploymentTarget(Protocol):
     def teardown(self, deployment: Deployment, approval: Approval) -> None: ...
 ```
 
-Targets: `local` (sandbox preview), `cloud_run_shared` (one demo-host service serving
-standard-profile G1/G2 demos from Cloud Storage, zero-permission service account, separate
-cloud project, no secrets), `cloud_run_dedicated` (own service when dependencies, compute,
-security or scaling require it). Deployed services: health endpoint, structured logs,
-scale to zero, instance cap, no reliance on the local filesystem. The plan screen shows
-resources, estimated cost and security posture; nothing is provisioned before approval.
+Targets:
+
+- `local` — sandbox preview on `127.0.0.1`.
+- `cloud_run_shared` — one demo-host service that contains **no generated code**. Its image
+  holds only released, conformance-tested recipe runtime components shipped with ProtoPitch.
+  Per demo it loads **safe artifacts** only: manifest and parameters (JSON), datasets
+  (CSV, Parquet, JSON), text corpora, indexes and model weights in non-executable formats
+  (no pickle; NumPy arrays loaded with pickling disabled, ONNX or safetensors for models).
+  Eligibility is checked before deployment: the build is G1; its recipe versions are
+  installed in the host image; its workspace code hashes equal a fresh deterministic render
+  (so it is unmodified recipe code); every artifact passes type, schema and size validation
+  and is listed in a hash manifest the host verifies on load.
+- `cloud_run_dedicated` — one service per demo, required for anything containing
+  model- or agent-written executable code (all G2 and G3 builds, custom frontends) or with
+  heavier dependencies. Own service account with no roles, no secrets, separate cloud
+  project from anything of value, instance and request limits.
+
+All deployed services: health endpoint, structured logs, scale to zero, instance cap, no
+reliance on the local filesystem, no paid model calls unless separately approved with a
+spend cap. The plan screen shows the target chosen and why, resources, estimated cost and
+security posture; nothing is provisioned before approval. Trust boundaries are in §12.
 
 ### 7.13 Outreach — `outreach/`
 
@@ -481,9 +686,16 @@ records and profile; a model may rephrase. A **claim check** blocks a draft that
 
 - cites experience below the required evidence level, or describes the prototype as past
   employment;
-- contains a metric not in the evaluation records, or omits its kind (synthetic data);
-- asserts knowledge of internal company matters, or a relationship that does not exist;
-- lacks the independence and synthetic-data disclosure.
+- contains a performance or business-impact claim that fails quantitative claim validation
+  (§7.9), or cites results without saying they come from synthetic or public data;
+- asserts knowledge of internal company matters, a relationship that does not exist, or
+  that the prototype was built for, with or at the request of the company;
+- misstates how the prototype was made (for example claiming it was written entirely by
+  hand).
+
+Mentioning ProtoPitch or the tooling used is optional and left to the owner. A short note
+that makes no result claims needs no disclosure sentence; the linked demo and repository
+always state that the work is an independent demonstration and what data it uses.
 
 The engine suggests target role titles. People are only ever user-entered `Contact` records
 or names quoted from a stored source. There is no send function.
@@ -511,7 +723,8 @@ side-effecting calls without a matching approval).
    → `RESEARCHED`.
 4. `identify_opportunities` job → scored `Opportunity` list, one selected →
    `OPPORTUNITIES_IDENTIFIED`.
-5. `propose_architecture` job → `ArchitectureProposal` v1 → `ARCHITECTURE_PROPOSED` →
+5. `propose_architecture` job → deterministic baseline, plus validated model candidates if
+   a model is routed, plus the capability-gap report → `ARCHITECTURE_PROPOSED` →
    `AWAITING_APPROVAL`.
 6. Owner approves, modifies (back to step 5), or regenerates (back to step 4).
 
@@ -520,7 +733,8 @@ Steps 2–5 run without owner input and without any model by default.
 ### 8.2 Build
 
 1. `APPROVED` → `BuildRun` created with mode and budgets → `GENERATING`.
-2. Generator writes the workspace; initial commit.
+2. Generator writes the workspace; initial commit. For G3 by manual or interactive handoff
+   the build waits in `AWAITING_EXTERNAL_WORK` until the owner imports the result.
 3. `TESTING`: checks run in the sandbox; repair loop within limits.
 4. Evaluation results ingested; documents rendered from records.
 5. All critical checks pass → `READY_FOR_REVIEW`; otherwise `FAILED` with diagnostics.
@@ -547,7 +761,10 @@ The demo shell renders a `demo.manifest.json`:
 ```
 
 Panel types cover forms, ranked lists, cited answers, step traces, metric tables, charts,
-architecture diagrams and limitations. The first screen states the problem, why it is
+architecture diagrams and limitations. The panel set is a registry, not a fixed list:
+recipes can register new panel types with the shell. G3 builds may replace the shell with a
+custom frontend when the interaction cannot be expressed in panels; the same disclosure and
+first-screen requirements apply and are checked at import. The first screen states the problem, why it is
 relevant to the role, and offers one working interaction; evaluation and architecture are
 one click away. Disclosures are always visible.
 
@@ -573,14 +790,66 @@ data/                runtime: database, artifacts, workspaces (git-ignored)
 | A1 | Single-user, localhost-only platform in v1 | No auth requirement in spec; platform holds keys and runs generated code |
 | A2 | Plain state machine and DB job queue; no agent framework in the core | Recoverability, testability, fewer dependencies |
 | A3 | Three generation modes with stated limits | Reconciles autonomy with zero-API operation |
-| A4 | Manifest-driven demo shell instead of per-project frontend builds | Speed, reliability, no network in sandbox |
+| A4 | *(revised)* Manifest-driven demo shell for G1/G2 with an extensible panel registry; G3 may generate a custom frontend, built offline in the `web` profile | Speed and reliability by default; no fixed ceiling on demo interaction |
 | A5 | Docker sandbox with prebuilt dependency profiles | Isolation and dependency control without network at build time |
-| A6 | Generators never execute; sandbox never holds credentials | Separates untrusted execution from secrets |
+| A6 | *(revised)* The platform executes generated code only in the sandbox, which holds no credentials. An automated coding agent runs in a separate agent container holding only its own credential; owner-run agents are outside the platform and their output is untrusted input | Separates untrusted execution from platform secrets while allowing real coding agents |
 | A7 | Capability registry and technology rules as data | Extension without core changes |
 | A8 | JD-listed technology never self-justifies | Spec §7, §27 |
-| A9 | Claims and metrics are typed records; documents render from them | Integrity rules become enforceable checks |
+| A9 | *(revised)* Claims and metrics are typed records; templates render from them; free prose is checked by quantitative claim validation rather than a ban on numbers | Integrity is enforceable without blocking legitimate technical detail |
 | A10 | Routing and model names only in configuration; default routing is deterministic or none | Model independence, zero-cost default |
 | A11 | Deployment and outreach are optional facets | Local-first; outreach possible with repository link only |
-| A12 | Shared demo host restricted to G1/G2 standard-profile demos | Cost aim of §19 with bounded isolation risk |
-| A13 | Draft-only outreach, user-entered contacts | Spec §16 constraints |
+| A12 | *(revised)* Shared demo host runs only trusted recipe runtime code and loads validated non-executable artifacts (unmodified G1 builds). Any generated executable code deploys to a dedicated isolated service | No untrusted code shares a process boundary |
+| A13 | *(revised)* Draft-only outreach, user-entered contacts; drafts must be accurate about independence, data and authorship; naming the tooling is optional | Spec §16; owner decision |
 | A14 | Reference prototypes built first, recipes extracted from them | Avoids premature abstraction |
+| A15 | A configured model may propose, compare and revise architectures, including components outside the baseline and catalogue; all candidates pass one validator; the deterministic baseline always exists | Better architectures when a model is available; unchanged zero-model operation |
+| A16 | Vendor-neutral coding-agent contract (work order in, change set out) with manual, interactive and automated modes; one generic command adapter configured in data | Any coding environment works without redesign; subscriptions are never treated as API access |
+| A17 | Imported agent work is validated identically regardless of tool: scope, protected paths, secret scan, dependency workflow, sandbox checks | Trust comes from validation, not from the tool |
+| A18 | `VERIFIED` requires evidence with a verbatim-checked excerpt in a stored snapshot; generalisations are `INFERRED` with premises | Traceable research |
+| A19 | Hash-pinned profile images; extras resolved wheels-only through an index-only resolver, installed offline; platform-owned Dockerfile | Reproducible builds in a network-restricted sandbox |
+| A20 | Docker is required only for executing generated code | Analysis and review work on any machine |
+| A21 | Capability gaps are explicit records with owner-chosen options; a JD-relevance gate prevents substituting a buildable but unrelated prototype | Honest handling of unsupported capabilities |
+| A22 | Remote-ready seams in v1: job backend interface, artifact-store-mediated workspaces, remote-capable sandbox driver, auth provider hook, API-only UI | Future remote workers and cloud execution without redesign; no mobile app |
+| A23 | Trust tiers T0–T4 define where each kind of code and data may run (§12) | Documented isolation boundaries |
+| A24 | Model output is always schema-validated data; it gains effect only through validators and owner approval | Applies to architecture, claims, code and outreach alike |
+
+## 12. Trust and isolation boundaries
+
+| Tier | What | Trusted? | Where it may run or be loaded |
+|------|------|----------|-------------------------------|
+| T0 | Platform code and configuration | Yes | Platform process; holds provider keys and cloud credentials |
+| T1 | Released recipe runtime components (reviewed, conformance-tested, versioned with the platform) | Yes | Sandbox; shared demo host |
+| T2 | Data artifacts: manifests, datasets, corpora, indexes, weights in non-executable formats | Validated, never executed | Anywhere after validation, including the shared demo host |
+| T3 | Generated executable code: model-written slots (G2), agent-written projects and custom frontends (G3), any modified recipe code | No | Local sandbox; dedicated cloud service. Never the platform process, never the shared host |
+| T4 | External input: JDs, web pages, uploads, model responses, agent result files, imported change sets | No | Parsed as data only; never executed, never followed as instructions |
+
+Boundaries:
+
+| Boundary | Inside | Cannot reach | Enforced by |
+|----------|--------|--------------|-------------|
+| Local sandbox | T1, T3 code for one build | Network, host environment, platform credentials, other projects, Docker socket | Container settings of §7.10 |
+| Resolver container | Package tooling and a requirements file | Workspace code, secrets, any host except the package index | Read-only single-file mount; allowlisting proxy |
+| Agent container (automated mode) | A coding agent, one workspace, that agent's own credential | Platform credentials, other projects, any host except the agent's provider | Mounts, empty environment plus `pass_env`, egress allowlist, time and spend limits. Residual risk: code the agent runs can read the agent's own key — use a dedicated, spend-capped key |
+| Owner-run agent (manual, interactive) | Outside the platform | — | Not enforceable by ProtoPitch; everything returned is T4 and goes through the import pipeline |
+| Shared demo host | T1 code, T2 artifacts of many demos | Any credential or cloud role; demos hold only public or synthetic data | No generated code present; artifact validation and hash manifest; role-less service account; separate cloud project |
+| Dedicated demo service | One demo's T3 code | Other demos, any credential or cloud role | Separate service and role-less service account per demo. Outbound internet is open by default on Cloud Run; nothing of value is reachable with it, and an egress-deny network configuration is available as an option |
+| Visitor's browser | Demo frontend | — | Shell: fixed code and strict content security policy. Custom frontends: served only from their own dedicated origin |
+
+## 13. Remote and cloud compatibility
+
+v1 is single-user and local-first, and needs no mobile application: the UI is a responsive
+web application and the only client. To keep remote workers and cloud execution possible
+without redesign, v1 code follows these constraints:
+
+| Seam | v1 implementation | Later, without core changes |
+|------|-------------------|-----------------------------|
+| `JobBackend` (enqueue, lease, heartbeat, complete) | Database in the same process space | HTTP-backed, so workers run elsewhere |
+| Workers | One local process; stateless between steps | Several, remote |
+| Workspaces | Local directory, but each step begins by materialising the workspace from the artifact store or Git state and ends by saving it | Any worker can run any step |
+| `ArtifactStore` | Local filesystem | Cloud Storage |
+| `SandboxDriver` | Local Docker | Remote Docker host, Cloud Run Jobs, Cloud Build |
+| `AuthProvider` on every API route | `LocalNoAuth`, bound to localhost | Real authentication before any remote exposure |
+| Secrets | Referenced by name, resolved where the code runs | Secret manager |
+| UI ↔ platform | REST and server-sent events only; approvals are API calls | Any future client |
+
+No module may assume a shared local path, the same host as the API, or an interactive
+terminal. Identifiers are UUIDs and timestamps are UTC.

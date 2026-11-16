@@ -5,7 +5,14 @@ This document records what the specification gets wrong, leaves open, or makes r
 how the architecture resolves each point. Resolutions marked **DECISION NEEDED** are listed
 again in `IMPLEMENTATION_PLAN.md` § "Decisions awaiting approval".
 
-Status: awaiting owner approval. Nothing here is implemented.
+Status: reviewed by the owner on 2026-11-16. Nothing here is implemented.
+
+> **Superseded by architecture revision 2.** Where this review and `ARCHITECTURE.md` differ,
+> the architecture is authoritative. Specifically: C6 and S9 (the shared demo host now runs
+> no generated code — ARCHITECTURE §7.12, §12); C7 (G3 may build a custom frontend — §7.8,
+> §9); C9 (coding-agent contract and agent container — §7.8, §12); M12 (naming the tooling
+> in outreach is optional — §7.13); S2 (full dependency workflow — §7.10). The G3 limit in
+> §3 is softened: G3 is also available by manual handoff with no API configured.
 
 ---
 

@@ -12,7 +12,7 @@ this file where reality differs.
 | Python | 3.12 | Backend, worker |
 | uv | current | Python dependency and environment management |
 | Node.js | 22 LTS | Platform frontend and demo shell |
-| Docker | current (Docker Desktop on macOS) | Sandbox; required for generation |
+| Docker | current (Docker Desktop on macOS) | Sandbox. Required only to build, test and preview generated prototypes; not for JD analysis, research or architecture review |
 | Git | 2.40+ | Platform and generated-project history |
 
 No model keys, local models or cloud accounts are needed to develop or run the
@@ -21,7 +21,8 @@ deterministic pipeline.
 ## 2. Setup and commands *(from M1)*
 
 ```bash
-make setup        # uv sync, npm install for frontend and demo-shell, build sandbox image
+make setup        # uv sync, npm install for frontend and demo-shell
+make sandbox-images  # build hash-pinned sandbox profile images (needs Docker and network)
 make dev          # API on 127.0.0.1:8000, worker, frontend dev server
 make check        # ruff, mypy, pytest, eslint, tsc, vitest — must pass before every commit
 make e2e          # Playwright and three-scenario end-to-end tests (needs Docker)
@@ -88,6 +89,9 @@ New recipes start as a hand-built working reference project; extract the recipe 
 - Does it read untrusted text? Then it goes through `PromptEnvelope` or the sanitiser, and
   its output is schema-validated.
 - Does it execute anything generated? Then it runs through `SandboxDriver`, nowhere else.
+- Does it accept work from a coding agent? Then it goes through the import pipeline
+  (`ARCHITECTURE.md` §7.8) whatever tool produced it.
+- Does it assume a local path or same-host worker? Use the artifact store and job backend.
 - Does it have an external side effect or cost? Then it is behind `ApprovalGate` and, for
   model calls, the budget check.
 - Does it log? Confirm nothing sensitive bypasses redaction.

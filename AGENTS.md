@@ -37,10 +37,12 @@ learn something a successor needs, write it into the documents below.
 4. **No fabrication.** No invented sources, company problems, contacts, candidate
    experience or metrics — in code, fixtures presented as real, documents or demos.
    Synthetic and simulated things are labelled.
-5. **Evidence typing.** Company statements are `Claim` records; metrics are evaluation
-   records written by sandbox runs. Documents render from records.
-6. **Untrusted input.** JDs, web pages, uploaded documents, model output and generated code
-   are untrusted. Generated code executes only in the sandbox. Credentials never enter it.
+5. **Evidence typing.** Company statements are `Claim` records; `VERIFIED` needs traceable
+   evidence. Metrics are evaluation records written by sandbox runs. Performance and
+   business-impact claims in any generated text must trace to those records.
+6. **Untrusted input.** JDs, web pages, uploaded documents, model output, imported agent
+   work and generated code are untrusted. The platform executes generated code only inside
+   the isolation boundaries of `ARCHITECTURE.md` §12. Platform credentials never enter them.
 7. **Approval gates.** Side-effecting operations check for a matching `Approval`.
 8. **Project isolation.** One project never reads or writes another project's data.
 9. **Bounded work.** Retries, repairs, time, tokens and spend all have hard limits.
@@ -48,6 +50,10 @@ learn something a successor needs, write it into the documents below.
     deployment target = new plugin or data file, not a core change.
 11. **Failures are failures.** Never mark a failed build, test or deployment as successful,
     and never skip or weaken a test to get a pass.
+12. **No silent substitution.** If a JD needs a capability the recipes cannot build, say
+    so and offer the options; never build something unrelated instead.
+13. **Remote-ready seams.** Respect the constraints of `ARCHITECTURE.md` §13 (no shared
+    local paths, no same-host assumptions).
 
 ## Working practice
 
