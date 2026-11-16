@@ -9,10 +9,18 @@ the **Status** section at the end of every working session.
 
 | Item | State |
 |------|-------|
-| Current handoff stage | **H1 — architecture revision 2 delivered; stopped, awaiting owner approval** |
-| Current milestone | M0 (architecture validation), revision 2 |
-| Application code | None. Not authorised. |
-| Next action | Owner approves revision 2 and answers the open decisions below, then names the coding model for M1. |
+| Architecture | **Approved by the owner** (revision 2.1, 2026-11-16) |
+| Implementation plan | **Revision 3 — awaiting owner approval** |
+| Current handoff stage | H1 — stopped at the stage boundary |
+| Application code | None. No milestone is authorised yet. |
+| Next action | Owner approves this plan, answers the open decisions, names the coding model for M1 and authorises M1. |
+
+### Authorisation
+
+| Milestone | Authorised |
+|-----------|------------|
+| M0 | Complete on approval of this plan |
+| M1–M8 | **No.** Each milestone starts only when the owner authorises it here. |
 
 ### Handoff stages (which coding model is working)
 
@@ -34,28 +42,33 @@ this file.
 
 | ID | Decision |
 |----|----------|
-| D1 | v1 is single-user and local-first, with seams kept for remote workers and cloud execution; no mobile application (ARCHITECTURE §13) |
-| D2 | Shared manifest-driven demo shell for G1/G2 with an extensible panel registry; G3 may generate a custom frontend (§7.8, §9) |
-| D3 | Shared Cloud Run demo host is restricted to trusted recipe runtime code and validated non-executable artifacts; generated executable code runs in dedicated isolated services (§7.12, §12) |
-| D6 | Outreach is draft-only and must be accurate about independence, data and authorship; mentioning ProtoPitch is optional (§7.13) |
-| R1–R10 | The ten revisions requested on review are incorporated as decisions A15–A24 and revised A4, A6, A9, A12, A13 (§11) |
+| D1 | v1 is single-user and local-first, with seams for remote workers and cloud execution; no mobile application (ARCHITECTURE §13) |
+| D2 | Demo shell for G1/G2 with an extensible panel registry; G3 may generate a custom frontend (§7.8, §9) |
+| D3 | Shared demo host takes only trusted recipe runtime code and validated non-executable artifacts (§7.12, §12) |
+| D4 | v1 catalogue: the four recipes of §7.7 |
+| D6 | Outreach is draft-only and accurate about independence, data and authorship; mentioning ProtoPitch is optional (§7.13) |
+| D9 | Sandbox in M1; reference prototypes before recipes |
+| D10 | Tooling per §4 |
+| U1 | A valid model-proposed architecture is the default recommendation; the baseline is always shown (§7.5) |
+| U2 | Models may propose unregistered components, flagged and G3-only (§7.5) |
+| U3 | Automated agents run in an agent container with egress allowlist; dedicated spend-capped key (§12) |
+| U4 | **Superseded by clarification 1:** dedicated cloud services deny egress by default; exceptions by approval (A25) |
+| U5 | `VERIFIED` only for verbatim-checked quotes; generalisations are `INFERRED` (§7.2) |
+| U6 | G2 and G3 demos deploy to dedicated services (§7.12) |
+| C1–C3 | Clarifications of 2026-11-16: restricted egress (A25), platform-owned evaluation (A26), real coding-agent acceptance test (A27) |
+
+D4, D9, D10, U1–U3, U5 and U6 are recorded as settled because the approved architecture
+states them. Say so if any of them was not meant to be approved.
 
 ### Open — need an answer before the milestone shown
 
 | ID | Question | Recommendation | Needed by |
 |----|----------|----------------|-----------|
-| D4 | v1 recipe catalogue is the four recipes covering Scenarios A–C? | Yes; forecasting, propensity and NL-to-SQL follow after M5 | M3 |
 | D5 | Deterministic JD analysis is English-only; other languages need a configured model? | Yes | M2 |
 | D7 | Seeded experience examples start as `UNVERIFIED` until you confirm each one? | Yes | M2 |
 | D8 | RAG demo corpora need per-project approval; default to openly licensed or synthetic text when rights are unclear? | Yes | M4 |
-| D9 | Sandbox moves into M1; reference prototypes are hand-built before recipes are extracted? | Yes | M1 |
-| D10 | Tooling: Python 3.12, uv, Ruff, mypy, pytest, Vitest, Playwright? | Yes | M1 |
-| U1 | When a valid model-proposed architecture and the deterministic baseline differ, which is the default recommendation? | The model proposal, with the baseline always shown as an alternative | M3 |
-| U2 | May a model propose a component whose capability is not in the registry? | Yes, flagged `unregistered` and buildable only by G3 | M3 |
-| U3 | Automated coding agents run code inside their agent container, where that code could read the agent's own API key. Accept with egress allowlist and a dedicated spend-capped key, or restrict automated agents to edit-only? | Accept with the controls; edit-only makes most agents ineffective | M6 |
-| U4 | Dedicated Cloud Run demo services have open outbound internet by default. Accept (role-less account, no secrets) or require an egress-deny network configuration, which adds cost and set-up? | Accept for v1; keep egress-deny as an option | M7 |
-| U5 | Model-written research summaries: `VERIFIED` only for verbatim-checked quotes, generalisations stored as `INFERRED`? | Yes (strict rule) | M2 |
-| U6 | G2 demos contain model-written code, so in the cloud each needs a dedicated service rather than the shared host. Accept this consequence of D3? | Yes | M7 |
+| U7 | Which real coding-agent environment, and which mode, is used for the G3 acceptance run? | One environment you already use, in `interactive` mode (no API key needed). An `automated` run with an API credential is an optional second run, with a spend cap you set. | M6 |
+| U8 | Which coding model works on M1? | Your choice | M1 |
 
 ---
 
@@ -65,15 +78,15 @@ Milestone numbers follow specification §25. Each lists dependencies, deliverabl
 acceptance criteria (AC) and required tests. A milestone is done when its AC pass in CI and
 the documents named in it are updated.
 
-### M0 — Architecture validation (revision 2 delivered, pending approval)
+### M0 — Architecture validation
 
-Deliverables: `docs/SPEC_REVIEW.md`, `ARCHITECTURE.md`, this plan, `AGENTS.md`,
+Deliverables: `docs/SPEC_REVIEW.md`, `ARCHITECTURE.md` (approved), this plan, `AGENTS.md`,
 `DEVELOPMENT_GUIDE.md`.
-AC: owner approves revision 2.
+AC: architecture approved (done); this plan approved (pending).
 
 ### M1 — Foundation
 
-Depends on: M0 approval, D9, D10. Stage: H2 for 1.4–1.5, H3 for the rest.
+Depends on: M0, U8. Stage: H2 for 1.4–1.5, H3 for the rest.
 
 | # | Work item |
 |---|-----------|
@@ -103,7 +116,7 @@ sandbox escape tests; no-Docker start-up test; API tests; one Playwright smoke t
 
 ### M2 — Intelligence
 
-Depends on: M1, D5, D7, U5. Stage: H3.
+Depends on: M1, D5, D7. Stage: H3.
 
 | # | Work item |
 |---|-----------|
@@ -134,14 +147,14 @@ scorer and gate tests; offline test.
 
 ### M3 — Decision engine
 
-Depends on: M2, D4, U1, U2. Stage: H2.
+Depends on: M2. Stage: H2.
 
 | # | Work item |
 |---|-----------|
 | 3.1 | `ProblemSpec` model; registry loader and validation |
 | 3.2 | Recipe SDK: manifest schema, discovery, conformance harness |
 | 3.3 | Deterministic baseline engine: composition, technology rules, trade-off ranking, plans, estimates, coverage map, diagram |
-| 3.4 | `ArchitectureValidator` (capability, justification, feasibility, resources, security, evaluability) applied to every candidate |
+| 3.4 | `ArchitectureValidator` (capability, justification, feasibility, resources, security, evaluability) applied to every candidate; evaluator registry interface so evaluability can check that each critical metric has a platform evaluator |
 | 3.5 | `ArchitectureReasoner` interface with mock-model implementation: propose, compare, revise; candidate origin tracking |
 | 3.6 | Capability-gap analysis and options (G2, G3, alternative opportunity, stop) |
 | 3.7 | Proposal versioning, structured modifications, alternatives comparison; approvals bound to payload hash; architecture review UI |
@@ -160,6 +173,9 @@ AC:
 - **A mock model revises a proposal in response to an owner modification; the revision is
   re-validated and versioned.**
 - **Malformed or instruction-bearing model output cannot bypass validation or approval.**
+- **Every proposal names its critical metrics. A candidate whose critical metric has no
+  platform evaluator is accepted only with the stated condition that the metric is
+  `SELF_REPORTED` and unusable in claims.**
 - **A JD whose primary capability has no recipe (computer-vision fixture) produces a gap
   report offering the feasible options; the platform does not select an unrelated buildable
   prototype, and cannot enter `GENERATING` until the owner chooses.**
@@ -179,12 +195,12 @@ Depends on: M1 sandbox, M3, D8. Stage: H2.
 | 4.1 | Hand-built reference prototype for Scenario A in the generated-project layout, passing all checks in the sandbox |
 | 4.2 | Demo shell v1, manifest schema and panel registry, built against 4.1 |
 | 4.3 | Extract `recsys.implicit_feedback`; RecipeComposer (G1); provenance and lock file |
-| 4.4 | Check runner, results ingestion, EvaluationReport, template rendering by record reference |
+| 4.4 | Check runner; **platform evaluation harness**: evaluator registry, platform-held evaluation set and split, two-phase predict/score execution, ranking evaluator, baselines and sanity checks, provenance on metrics, comparison with self-reported results; template rendering by record reference |
 | 4.5 | Quantitative claim validation: detector, matching, `QuantClaim` records, review listing |
 | 4.6 | Dependency workflow: policy file, resolver container with index-only proxy, wheelhouse cache, offline install, platform-owned Dockerfile build |
 | 4.7 | Repair loop: failure classifier, deterministic fixers, limits, RepairAttempt storage |
 | 4.8 | Generation workspace UI and prototype review UI |
-| 4.9 | Reference prototypes then recipes for `rag.grounded_qa`, `agent.tool_workflow`, `mlops.pipeline_monitoring` |
+| 4.9 | Reference prototypes then recipes for `rag.grounded_qa`, `agent.tool_workflow`, `mlops.pipeline_monitoring`, each with its platform evaluator (retrieval, tool-call sequence, classification/regression and drift detection) |
 | 4.10 | `PROTOTYPE_RECIPE_GUIDE.md` |
 
 AC:
@@ -200,21 +216,34 @@ AC:
   a comparison not computable from records, or a business-impact figure phrased as an
   achieved result is blocked; the same document with versions, dates, ports, dataset sizes
   and parameter values passes untouched.**
+- **Platform-owned evaluation:**
+  - **every critical metric of every recipe is stored as `PLATFORM_COMPUTED` with evaluator
+    version, seed and data hash;**
+  - **each evaluator passes known-answer tests (hand-computed fixtures);**
+  - **a project whose `results.json` is edited to inflate a critical metric fails the
+    evaluation check, and the stored value is the platform's;**
+  - **project code cannot read held-out labels during the prediction phase (test attempts
+    to locate them and must fail), and no project code runs in the scoring container;**
+  - **a model that leaks test items into training or returns a perfect score is flagged by
+    the sanity checks;**
+  - **a `SELF_REPORTED` metric cannot satisfy quantitative claim validation.**
 - A deliberately broken build ends `FAILED` after at most 3 repair attempts with stored
   diagnostics and intact partial work.
 - Simulated or extractive components are disclosed in the demo and README.
 - Same inputs and seed produce identical files.
 
-Tests: conformance suite; dependency-workflow tests; claim-validation fixtures (positive and
-negative); repair-limit test; determinism test.
+Tests: conformance suite; evaluator known-answer tests; evaluation tamper and label-isolation
+tests; dependency-workflow tests; claim-validation fixtures (positive and negative);
+repair-limit test; determinism test.
 
 ### M5 — Three-scenario validation
 
 Depends on: M4. Stage: H3.
 
 AC (specification §24):
-- Scenarios A, B and C each run end to end from JD to reviewed demo with measured
-  evaluation, with no model keys, no local model and the network disabled.
+- Scenarios A, B and C each run end to end from JD to reviewed demo with no model keys, no
+  local model and the network disabled. **All headline metrics shown in each demo and its
+  documents are `PLATFORM_COMPUTED`.**
 - The three projects differ in recipe set, algorithms, data schema, endpoints and metrics
   (structural-difference test); none modifies another's files.
 - Regeneration creates version 2 and preserves version 1 and the owner's modifications.
@@ -224,7 +253,7 @@ Tests: three end-to-end tests in CI; differentiation test; versioning test.
 
 ### M6 — Model adapters, routing and coding-agent handoff
 
-Depends on: M2 (router can start in parallel with M4); 6.5–6.8 need M4; U3.
+Depends on: M2 (6.1–6.4 can run in parallel with M3–M4); 6.5–6.10 need M4; 6.10 needs U7.
 Stage: H2 for router, budgets, handoff contract and agent container; H3 for adapters.
 
 | # | Work item |
@@ -238,6 +267,7 @@ Stage: H2 for router, budgets, handoff contract and agent container; H3 for adap
 | 6.7 | Handoff modes: `manual` (export/import by path, bundle or archive), `interactive` (`protopitch handoff check`), `automated` (generic command adapter, agent container, egress allowlist, limits, approval) |
 | 6.8 | `web` sandbox profile; custom-frontend build, smoke test and disclosure check |
 | 6.9 | `MODEL_PROVIDER_GUIDE.md`, including a coding-agent section with example configurations |
+| 6.10 | **Real coding-agent acceptance run** (A27): gap-triggering fixture JD outside the G1 catalogue; scripted procedure; acceptance report artifact |
 
 AC:
 - Swapping a task between two mock providers is a configuration change only.
@@ -259,16 +289,39 @@ AC:
 - **A G3 build with a custom frontend builds offline, loads, and is rejected if the
   required disclosures are missing.**
 - Injection fixtures do not alter structured outputs beyond schema-valid data.
+- **Imported G3 work is scored by the platform evaluator; a change set that edits the
+  evaluation set, evaluator configuration or prediction-interface contract has those paths
+  restored before scoring.**
+- **G3 end-to-end acceptance with a real coding-agent environment (owner-directed, not
+  unattended CI). Using the fixture JD and at least one real environment, all of the
+  following are observed and recorded in the acceptance report:**
+  1. **Gap report produced; G3 chosen and the proposal approved.**
+  2. **Work order created and readable by the agent without ProtoPitch-specific tooling.**
+  3. **The real agent generates the code; no manual edits by the owner to the generated
+     source.**
+  4. **Change set imported; scope, protected-path, secret and dependency checks pass or
+     correctly block.**
+  5. **Full sandbox check sequence passes, within the repair limit, including at least one
+     feedback round if the first import fails.**
+  6. **Critical metrics are `PLATFORM_COMPUTED`; documents pass claim validation.**
+  7. **Project reaches `READY_FOR_REVIEW` and the demo runs in local preview.**
+  **The report records environment name and version, mode, rounds, elapsed time, any spend,
+  and check results. M6 is not complete without a passing report. If the run fails, the
+  failure and diagnosis are recorded and M6 stays open.**
+
+Tests: provider switching and budget tests; handoff contract tests with stub agents; import
+defence fixtures; agent-container isolation tests; custom-frontend tests; real-environment
+acceptance run (6.10).
 
 ### M7 — Deployment, outreach, GitHub
 
-Depends on: M5 (and M6 for dedicated-service cases); U4, U6. Stage: H2 for 7.2, H3 for the rest.
+Depends on: M5; 7.3 also needs M6 (G2/G3 builds exist). Stage: H2 for 7.2–7.3, H3 for the rest.
 
 | # | Work item |
 |---|-----------|
 | 7.1 | Deployment target interface; local target; Cloud Storage artifact store |
 | 7.2 | Shared demo host: trusted runtime image, artifact validator, hash manifest, eligibility check (G1, installed recipe versions, unmodified render) |
-| 7.3 | Dedicated Cloud Run target; role-less service account per demo; plan screen with target rationale and estimate; health validation, rollback, teardown, expiry |
+| 7.3 | Dedicated Cloud Run target: role-less service account per demo, **egress denied by default through an isolated no-route network**, egress-exception approval type, plan screen showing target rationale, network posture and estimate; health validation, rollback, teardown, expiry. Confirm the exact network settings against current Cloud Run documentation and record them in `DEPLOYMENT_GUIDE.md` |
 | 7.4 | Outreach engine, revised claim check, contact records, outreach workspace UI |
 | 7.5 | Optional GitHub adapter with approval and secret scan; CI workflow in generated repos |
 | 7.6 | `DEPLOYMENT_GUIDE.md` (including the trust-boundary table), `API_REFERENCE.md` |
@@ -281,7 +334,16 @@ AC:
 - **The shared host refuses to load an artifact whose hash is not in the manifest, and its
   image contains no per-project code (asserted by inspection test).**
 - **Dedicated services are created with a service account that has no roles and no secrets
-  mounted (asserted against the generated deployment configuration).**
+  or credential environment variables (asserted against the generated deployment
+  configuration).**
+- **Egress default: the generated configuration for every dedicated service routes all
+  egress to the isolated network with a deny rule; a configuration without it is refused
+  unless a matching egress-exception approval names the destinations.**
+- **Live verification on one deployed dedicated demo (owner-approved, smallest instance):
+  a probe request from inside the service to a public host and to a cloud API endpoint
+  fails; the demo itself still serves requests. The result is recorded.**
+- **A deployment target that cannot restrict egress reports that in its plan and cannot be
+  applied without the exception approval.**
 - A failed deployment rolls back and leaves the project in `READY_FOR_REVIEW`.
 - **Outreach claim check: rejects unverified experience, unsupported performance or impact
   claims, implied company involvement and misstated authorship; accepts an accurate draft
@@ -306,10 +368,21 @@ security, failure and remote-readiness suites.
 ## Dependency summary
 
 ```
-M0 → M1 → M2 → M3 → M4 → M5 → M7 → M8
-            └─ M6.1–6.4 (parallel) ─┐
-                         M4 → M6.5–6.8 → (dedicated-service cases in M7)
+M0 ─→ M1 ─→ M2 ─→ M3 ─→ M4 ─→ M5 ─→ M7 ─→ M8
+              │                │       ↑
+              └→ M6.1–6.4 ─────┴→ M6.5–6.10 (7.3 needs G2/G3 builds from M6)
 ```
+
+| Milestone | Hard dependencies | Owner inputs needed |
+|-----------|-------------------|---------------------|
+| M1 | M0 | U8, authorisation |
+| M2 | M1 | D5, D7 |
+| M3 | M2 | — |
+| M4 | M1 sandbox, M3 | D8 |
+| M5 | M4 | Review of the three demos |
+| M6 | 6.1–6.4: M2. 6.5–6.10: M4 | U7; approval and budget for any paid or automated run |
+| M7 | M5; 7.3: M6 | Cloud project, approval for the live egress verification and any deployment |
+| M8 | M7 | — |
 
 ## Scenario confirmation
 
@@ -328,7 +401,8 @@ confirmation; nothing has been built or run yet.
 | Suite | Introduced | Purpose |
 |-------|-----------|---------|
 | State machine and recovery | M1 | No illegal transitions; resume after interruption |
-| Sandbox and container isolation | M1, M4, M6 | Sandbox, resolver and agent containers hold their boundaries |
+| Sandbox and container isolation | M1, M4, M6 | Sandbox, resolver, scoring and agent containers hold their boundaries |
+| Platform evaluation | M4 | Evaluators are correct; tampered or self-reported results cannot become trusted metrics |
 | No-Docker operation | M1–M3 | Analysis through approval works without Docker |
 | Golden JD fixtures | M2 | Classification stability, including adversarial JDs |
 | Evidence integrity | M2 | Verified claims are traceable; inferences have premises |
@@ -340,7 +414,8 @@ confirmation; nothing has been built or run yet.
 | Differentiation | M5 | Projects differ structurally, not cosmetically |
 | Provider switching and budget | M6 | Configuration-only routing; zero-budget guarantee |
 | Coding-agent handoff | M6 | Tool-independent contract; import pipeline defences |
-| Deployment trust boundaries | M7 | Shared host takes only trusted code and safe artifacts |
+| Real coding-agent acceptance | M6 | Owner-directed end-to-end G3 run with a real environment |
+| Deployment trust boundaries | M7 | Shared host takes only trusted code and safe artifacts; dedicated services have no egress, roles or secrets |
 | Approval gates | M3, M7 | Side effects impossible without approval |
 | Remote readiness | M8 | No local-path or same-host assumptions |
 
@@ -358,6 +433,12 @@ confirmation; nothing has been built or run yet.
    release gate for every recipe.
 7. Model-proposed architectures raising cost through G3 — conditions and estimates are
    shown before approval.
+8. Prediction-interface contract too rigid for novel G3 problems — evaluators are added by
+   registration; until one exists the metric is visibly `SELF_REPORTED`.
+9. Real-agent acceptance run is not repeatable in CI — keep the scripted procedure and the
+   stored report; rerun when the handoff contract changes.
+10. Cloud network settings change over time — the egress configuration is verified live in
+    M7, not assumed.
 
 ## Handoff log
 
@@ -365,3 +446,4 @@ confirmation; nothing has been built or run yet.
 |------|-------|---------|
 | 2026-11-16 | H1 | Specification reviewed; architecture, plan and handoff documents written. No application code. |
 | 2026-11-16 | H1 | Owner approved the architecture in principle with ten revisions. Revision 2 written: model architecture reasoning with validation, G3 custom frontends, coding-agent execution contract, trusted-only shared demo host, quantitative claim validation, traceable verified claims, dependency workflow, explicit capability gaps, remote-ready seams, revised outreach rules. D1, D2, D3, D6 settled. Awaiting approval of revision 2 and open decisions. No application code. |
+| 2026-11-16 | H1 | Owner approved the architecture (revision 2) with three clarifications, incorporated as A25–A27: egress denied by default for dedicated cloud services, platform-owned evaluation, real coding-agent acceptance test. Plan revised to revision 3 to match. Awaiting approval of the plan, open decisions D5, D7, D8, U7, U8 and authorisation of M1. No application code. |

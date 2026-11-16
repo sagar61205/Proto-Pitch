@@ -3,7 +3,7 @@
 A local-first platform that turns a job description into a tested, company-relevant working
 prototype and a hiring-manager outreach draft.
 
-**Current state: architecture proposed, awaiting approval. No application code yet.**
+**Current state: architecture approved; implementation plan awaiting approval. No application code yet.**
 
 | Document | Contents |
 |----------|----------|
