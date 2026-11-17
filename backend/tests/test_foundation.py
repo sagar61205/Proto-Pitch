@@ -65,7 +65,9 @@ def test_redactor_hides_known_values_and_credential_shapes() -> None:
 
 def test_log_records_are_json_and_redacted() -> None:
     formatter = JsonFormatter(Redactor(["s3cr3t-value-123"]))
-    record = logging.LogRecord("x", logging.INFO, __file__, 1, "token is %s", ("s3cr3t-value-123",), None)
+    record = logging.LogRecord(
+        "x", logging.INFO, __file__, 1, "token is %s", ("s3cr3t-value-123",), None
+    )
     record.job_id = "j1"
     payload = json.loads(formatter.format(record))
     assert payload["message"] == f"token is {REDACTED}"

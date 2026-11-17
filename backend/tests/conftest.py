@@ -36,7 +36,7 @@ def no_outbound_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket.socket, "connect", guarded)
 
 
-def test_env(data_dir: Path, **extra: str) -> dict[str, str]:
+def env_for_tests(data_dir: Path, **extra: str) -> dict[str, str]:
     env = {
         "PROTOPITCH_STORAGE__DATA_DIR": str(data_dir),
         "PROTOPITCH_JOBS__EXTRA_MODULES": f'["{FIXTURE_JOBS}"]',
@@ -56,7 +56,7 @@ def data_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def settings(data_dir: Path) -> Settings:
-    return load_settings(REPO_ROOT, test_env(data_dir))
+    return load_settings(REPO_ROOT, env_for_tests(data_dir))
 
 
 @pytest.fixture
