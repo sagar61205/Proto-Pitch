@@ -316,6 +316,13 @@ def test_selftest_job_records_digest_and_lock_hash_on_the_run(ctx: AppContext) -
     assert not [n for n in recorded["report"]["env_names"] if n.startswith("PROTOPITCH")]
 
 
+def test_worker_reports_its_sandbox_capability(ctx: AppContext) -> None:
+    ctx.make_worker("reporting-worker").report()
+    reported = ctx.jobs.latest_worker_report(within_seconds=30)
+    assert reported is not None and reported["available"] is True
+    assert reported["profiles"][0]["image_digest"].startswith("sha256:")
+
+
 def test_core_profile_contains_the_pinned_stack(driver: DockerSandboxDriver) -> None:
     code = "import numpy, pandas, scipy, sklearn, fastapi, pytest, rank_bm25, faiss, langgraph; print('IMPORTS OK')"
     result = run_py(driver, code, limits=FAST.model_copy(update={"memory_mb": 1024}))

@@ -898,10 +898,15 @@
           "version": {
             "title": "Version",
             "type": "string"
+          },
+          "worker_online": {
+            "title": "Worker Online",
+            "type": "boolean"
           }
         },
         "required": [
           "version",
+          "worker_online",
           "generation_available",
           "sandbox",
           "model_providers_configured",

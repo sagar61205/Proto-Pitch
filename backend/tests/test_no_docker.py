@@ -85,8 +85,14 @@ def test_real_server_starts_with_no_docker_no_keys_and_runs_a_job(data_dir: Path
                 return False
 
         wait_for(up, timeout=40, what="the server to start")
+        wait_for(
+            lambda: _get(f"{base}/api/system/status")["worker_online"],
+            timeout=30,
+            what="the worker to report in",
+        )
         status = _get(f"{base}/api/system/status")
         assert status["generation_available"] is False
+        assert "Docker was not found" in status["sandbox"]["reason"]
         assert status["model_providers_configured"] == []
 
         request = urllib.request.Request(

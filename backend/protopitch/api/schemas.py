@@ -174,6 +174,8 @@ class SandboxStatus(BaseModel):
 
 class SystemStatus(BaseModel):
     version: str
+    # False when no worker has reported recently: queued jobs will wait until one starts.
+    worker_online: bool
     generation_available: bool
     sandbox: SandboxStatus
     # No model provider is needed or configured in M1; the deterministic platform is complete.

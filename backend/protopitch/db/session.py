@@ -23,9 +23,19 @@ def make_engine(database_url: str) -> Engine:
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.execute("PRAGMA busy_timeout=30000")
             cursor.execute("PRAGMA synchronous=NORMAL")
+            # Deleted rows are overwritten, not just unlinked, so "delete" means gone.
+            cursor.execute("PRAGMA secure_delete=ON")
             cursor.close()
 
     return engine
+
+
+def scrub_deleted(engine: Engine) -> None:
+    """After a deletion: fold the write-ahead log into the database and truncate it, so
+    deleted content does not linger in the log file. Best effort while readers are active."""
+    if engine.dialect.name == "sqlite":
+        with engine.connect() as connection:
+            connection.exec_driver_sql("PRAGMA wal_checkpoint(TRUNCATE)")
 
 
 SessionFactory = sessionmaker[Session]

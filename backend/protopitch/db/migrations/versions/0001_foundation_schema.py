@@ -63,6 +63,13 @@ def upgrade() -> None:
     with op.batch_alter_table('projects', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_projects_status'), ['status'], unique=False)
 
+    op.create_table('workers',
+    sa.Column('id', sa.String(length=120), nullable=False),
+    sa.Column('started_at', protopitch.db.models.UTCDateTime(timezone=True), nullable=False),
+    sa.Column('last_seen_at', protopitch.db.models.UTCDateTime(timezone=True), nullable=False),
+    sa.Column('sandbox', sa.JSON(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('artifacts',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('project_id', sa.String(length=36), nullable=True),
@@ -174,6 +181,7 @@ def downgrade() -> None:
         batch_op.drop_index('ix_artifacts_project')
 
     op.drop_table('artifacts')
+    op.drop_table('workers')
     with op.batch_alter_table('projects', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_projects_status'))
 

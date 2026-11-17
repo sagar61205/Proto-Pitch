@@ -171,6 +171,18 @@ class JobEvent(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
+class WorkerStatus(Base):
+    """What each worker last reported about itself. Lets the API describe sandbox
+    capability where the worker runs, which may not be where the API runs."""
+
+    __tablename__ = "workers"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
+    sandbox: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+
 class Approval(Base):
     """A recorded owner decision bound to the hash of the exact payload it authorises."""
 

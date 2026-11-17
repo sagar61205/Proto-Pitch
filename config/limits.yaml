@@ -5,6 +5,7 @@ jobs:
   poll_interval_seconds: 1.0
   max_step_attempts: 3
   job_deadline_seconds: 3600
+  worker_report_seconds: 10
 sandbox:
   limits:
     cpus: 2.0

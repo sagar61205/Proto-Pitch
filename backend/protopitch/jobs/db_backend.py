@@ -13,7 +13,16 @@ from typing import Any
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session
 
-from protopitch.db.models import Artifact, Job, JobEvent, Project, ProjectVersion, Step, utcnow
+from protopitch.db.models import (
+    Artifact,
+    Job,
+    JobEvent,
+    Project,
+    ProjectVersion,
+    Step,
+    WorkerStatus,
+    utcnow,
+)
 from protopitch.db.session import SessionFactory, session_scope
 from protopitch.domain.lifecycle import WORKING_STATES, ProjectStatus
 from protopitch.errors import LeaseLostError, NotFoundError
@@ -366,6 +375,29 @@ class DbJobBackend:
         job.created_at = utcnow()  # the deadline restarts with the owner's resume
         job.started_at = None
         session.add(JobEvent(job_id=job.id, level="info", message="Resumed by the owner."))
+
+    # ----- workers -------------------------------------------------------------------------
+
+    def report_worker(self, worker_id: str, sandbox: dict[str, Any]) -> None:
+        with session_scope(self._sessions) as session:
+            row = session.get(WorkerStatus, worker_id)
+            if row is None:
+                session.add(WorkerStatus(id=worker_id, sandbox=sandbox))
+            else:
+                row.last_seen_at = utcnow()
+                row.sandbox = sandbox
+
+    def latest_worker_report(self, within_seconds: float) -> dict[str, Any] | None:
+        """The sandbox capability reported by the most recently seen live worker."""
+        cutoff = utcnow() - timedelta(seconds=within_seconds)
+        with session_scope(self._sessions) as session:
+            row = session.scalars(
+                select(WorkerStatus)
+                .where(WorkerStatus.last_seen_at >= cutoff)
+                .order_by(WorkerStatus.last_seen_at.desc())
+                .limit(1)
+            ).first()
+            return dict(row.sandbox) if row is not None else None
 
     # ----- events and reads ----------------------------------------------------------------
 

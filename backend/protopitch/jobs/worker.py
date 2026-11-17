@@ -12,9 +12,11 @@ import os
 import shutil
 import socket
 import threading
+import time
 import traceback
 import uuid
 from collections.abc import Callable
+from dataclasses import asdict
 from pathlib import Path
 
 from protopitch.errors import LeaseLostError, PlatformError
@@ -78,9 +80,20 @@ class Worker:
     def request_stop(self) -> None:
         self._stopping.set()
 
+    def report(self) -> None:
+        """Tell the platform this worker is alive and what its sandbox can do."""
+        try:
+            self._backend.report_worker(self.worker_id, asdict(self._sandbox.probe()))
+        except Exception:  # noqa: BLE001 - reporting must never stop the worker
+            log.warning("could not report worker status", extra={"worker_id": self.worker_id})
+
     def run_forever(self) -> None:
         log.info("worker started", extra={"worker_id": self.worker_id})
+        last_report = float("-inf")
         while not self._stopping.is_set():
+            if time.monotonic() - last_report >= self._settings.jobs.worker_report_seconds:
+                self.report()
+                last_report = time.monotonic()
             if not self.run_once():
                 self._stopping.wait(self._settings.jobs.poll_interval_seconds)
         log.info("worker stopped", extra={"worker_id": self.worker_id})

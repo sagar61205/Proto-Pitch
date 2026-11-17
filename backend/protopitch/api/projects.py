@@ -24,12 +24,20 @@ from protopitch.api.schemas import (
 )
 from protopitch.context import AppContext
 from protopitch.db.models import Approval, JDDocument, Job, Project, ProjectVersion
+from protopitch.db.session import scrub_deleted
 from protopitch.domain.hashing import payload_hash, text_hash
 from protopitch.domain.lifecycle import ProjectStatus
 from protopitch.errors import ConflictError, IllegalTransitionError
 from protopitch.jobs.backend import JobStatus
 from protopitch.jobs.builtin import PROJECT_BOOTSTRAP
-from protopitch.services import ApprovalGate, audit, get_project, transition_project
+from protopitch.services import (
+    ApprovalGate,
+    audit,
+    blobs_still_referenced,
+    get_project,
+    project_blob_hashes,
+    transition_project,
+)
 
 router = APIRouter(tags=["projects"], responses=ERROR_RESPONSES)
 
@@ -231,8 +239,16 @@ def delete_project(project_id: str, ctx: Ctx, db: Db, actor: Actor) -> Response:
         subject_id=project.id,
         details={"company": project.company, "role": project.role, "approval_id": approval.id},
     )
+    blobs = project_blob_hashes(db, project.id)
     db.delete(project)
+    db.flush()
+    # Jobs and artifacts are removed by the database's cascade; expire the session's view.
+    db.expire_all()
+    orphaned = blobs - blobs_still_referenced(db, blobs)
     db.commit()
+    for sha256 in orphaned:
+        ctx.artifacts.delete(sha256)
+    scrub_deleted(ctx.engine)
     ctx.workspaces.remove_project(project_id)
     return Response(status_code=204)
 

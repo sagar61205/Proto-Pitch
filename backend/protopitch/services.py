@@ -7,7 +7,16 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from protopitch.db.models import Approval, AuditEvent, Project, utcnow
+from protopitch.db.models import (
+    Approval,
+    Artifact,
+    AuditEvent,
+    JDDocument,
+    Job,
+    Project,
+    ProjectVersion,
+    utcnow,
+)
 from protopitch.domain.lifecycle import (
     ProjectStatus,
     TransitionKind,
@@ -109,6 +118,36 @@ class ApprovalGate:
             raise refusal
         approval.consumed_at = utcnow()
         return approval
+
+
+def project_blob_hashes(session: Session, project_id: str) -> set[str]:
+    """Every artifact-store blob this project refers to."""
+    hashes: set[str] = set()
+    hashes.update(
+        session.scalars(select(JDDocument.content_hash).where(JDDocument.project_id == project_id))
+    )
+    hashes.update(session.scalars(select(Artifact.sha256).where(Artifact.project_id == project_id)))
+    for column, owner in (
+        (ProjectVersion.workspace_snapshot, ProjectVersion.project_id),
+        (Job.workspace_snapshot, Job.project_id),
+    ):
+        hashes.update(h for h in session.scalars(select(column).where(owner == project_id)) if h)
+    return hashes
+
+
+def blobs_still_referenced(session: Session, hashes: set[str]) -> set[str]:
+    """Of ``hashes``, those some remaining record still needs (the store is shared)."""
+    if not hashes:
+        return set()
+    kept: set[str] = set()
+    for column in (
+        JDDocument.content_hash,
+        Artifact.sha256,
+        ProjectVersion.workspace_snapshot,
+        Job.workspace_snapshot,
+    ):
+        kept.update(h for h in session.scalars(select(column).where(column.in_(hashes))) if h)
+    return kept
 
 
 def transition_project(

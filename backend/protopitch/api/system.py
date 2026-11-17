@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from protopitch import __version__
 from protopitch.api.deps import Ctx
-from protopitch.api.schemas import ERROR_RESPONSES, JobOut, ProfileOut, SandboxStatus, SystemStatus
+from protopitch.api.schemas import ERROR_RESPONSES, JobOut, SandboxStatus, SystemStatus
 from protopitch.jobs.builtin import SANDBOX_SELFTEST
 
 router = APIRouter(tags=["system"], responses=ERROR_RESPONSES)
@@ -20,16 +20,15 @@ def health() -> dict[str, str]:
 @router.get("/system/status", response_model=SystemStatus)
 def status(ctx: Ctx) -> SystemStatus:
     """What this installation can do right now. Never fails because Docker is missing."""
-    capability = ctx.sandbox.probe()
+    # Generated code runs where the worker runs, so a live worker's report is authoritative.
+    # Without one, describe what this process can see.
+    reported = ctx.jobs.latest_worker_report(ctx.settings.jobs.worker_report_seconds * 3)
+    sandbox = SandboxStatus.model_validate(reported or asdict(ctx.sandbox.probe()))
     return SystemStatus(
         version=__version__,
-        generation_available=capability.available,
-        sandbox=SandboxStatus(
-            available=capability.available,
-            driver=capability.driver,
-            reason=capability.reason,
-            profiles=[ProfileOut(**asdict(p)) for p in capability.profiles],
-        ),
+        worker_online=reported is not None,
+        generation_available=sandbox.available,
+        sandbox=sandbox,
         model_providers_configured=[],
         job_types=ctx.registry.types(),
     )

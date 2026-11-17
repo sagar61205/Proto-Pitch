@@ -39,6 +39,7 @@ class JobSettings(_Section):
     poll_interval_seconds: float = 1.0
     max_step_attempts: int = Field(default=3, ge=1, le=10)
     job_deadline_seconds: float = 3600
+    worker_report_seconds: float = 10
     # Import paths of modules that register additional job types (extension by registration).
     extra_modules: list[str] = Field(default_factory=list)
 

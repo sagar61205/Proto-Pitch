@@ -10,7 +10,7 @@ const link = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 export function Layout({ children }: { children: ReactNode }) {
-  const status = useLoad(api.status);
+  const status = useLoad(api.status, 10_000);
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
@@ -28,7 +28,15 @@ export function Layout({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
-      {status.data && !status.data.generation_available && (
+      {status.data && !status.data.worker_online && (
+        <div className="border-b border-amber-200 bg-amber-50" data-testid="worker-notice">
+          <p className="mx-auto max-w-6xl px-4 py-2 text-sm text-amber-900">
+            <span className="font-medium">No worker is running.</span> New jobs will wait in the
+            queue until one starts (`make start` runs one automatically).
+          </p>
+        </div>
+      )}
+      {status.data && status.data.worker_online && !status.data.generation_available && (
         <div className="border-b border-amber-200 bg-amber-50" data-testid="generation-notice">
           <p className="mx-auto max-w-6xl px-4 py-2 text-sm text-amber-900">
             <span className="font-medium">Prototype generation is unavailable.</span>{" "}

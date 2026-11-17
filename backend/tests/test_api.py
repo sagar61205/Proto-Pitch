@@ -29,6 +29,32 @@ def test_health_and_status(client: TestClient) -> None:
     assert set(status["sandbox"]) == {"available", "driver", "reason", "profiles"}
 
 
+def test_status_prefers_what_a_live_worker_reports(client: TestClient, ctx: AppContext) -> None:
+    """Generated code runs where the worker runs, which may differ from the API's host."""
+    before = client.get("/api/system/status").json()
+    assert before["worker_online"] is False
+
+    ctx.jobs.report_worker(
+        "worker-elsewhere",
+        {
+            "available": True,
+            "driver": "docker",
+            "reason": None,
+            "profiles": [
+                {"profile": "core", "image": "img:abc", "present": True,
+                 "image_digest": "sha256:" + "a" * 64, "lock_hash": "b" * 64}
+            ],
+        },
+    )  # fmt: skip
+    after = client.get("/api/system/status").json()
+    assert after["worker_online"] is True
+    assert after["generation_available"] is True
+    assert after["sandbox"]["profiles"][0]["image"] == "img:abc"
+
+    # A worker that stopped reporting no longer counts.
+    assert ctx.jobs.latest_worker_report(within_seconds=0) is None
+
+
 def test_create_project_stores_the_jd_and_bootstraps_a_workspace(
     client: TestClient, ctx: AppContext
 ) -> None:
@@ -252,10 +278,18 @@ def test_delete_is_refused_without_an_approval_bound_to_that_project(
     })  # fmt: skip
     workspace = ctx.workspaces.path_for(doomed["id"], 1)
     assert workspace.is_dir()
+    client_snapshot = client.get(f"/api/projects/{doomed['id']}").json()["versions"][0][
+        "workspace_snapshot"
+    ]
     assert client.delete(f"/api/projects/{doomed['id']}").status_code == 204
 
     assert client.get(f"/api/projects/{doomed['id']}").status_code == 404
     assert not workspace.exists()
+    # The two projects share the same job-description text, so that blob must survive...
+    assert ctx.artifacts.exists(doomed["jd"]["content_hash"])
+    # ...while the deleted project's own workspace snapshot is gone from the store.
+    doomed_snapshot = client_snapshot
+    assert doomed_snapshot and not ctx.artifacts.exists(doomed_snapshot)
     # The other project is intact, and the audit trail still records what happened.
     assert client.get(f"/api/projects/{keep['id']}").json()["jobs"][0]["status"] == "succeeded"
     assert ctx.workspaces.path_for(keep["id"], 1).is_dir()
@@ -264,6 +298,28 @@ def test_delete_is_refused_without_an_approval_bound_to_that_project(
             select(AuditEvent.action).where(AuditEvent.subject_id == doomed["id"])
         ).all()
     assert "project.create" in actions and "project.delete" in actions
+
+
+def test_deleting_the_only_project_removes_its_job_description_from_disk(
+    client: TestClient, ctx: AppContext
+) -> None:
+    secret_jd = "Confidential job description that must not outlive its project."
+    project = client.post(
+        "/api/projects", json={"company": "Solo", "role": "DS", "jd_text": secret_jd}
+    ).json()
+    drain(ctx)
+    plan = client.get(f"/api/projects/{project['id']}/delete-plan").json()
+    client.post("/api/approvals", json={
+        "kind": plan["kind"], "payload_hash": plan["payload_hash"], "decision": "approved",
+        "project_id": project["id"],
+    })  # fmt: skip
+    assert client.delete(f"/api/projects/{project['id']}").status_code == 204
+    leftovers = [
+        path for path in ctx.settings.data_dir.rglob("*")
+        if path.is_file() and secret_jd.encode() in path.read_bytes()
+    ]  # fmt: skip
+    assert leftovers == []
+    assert not ctx.artifacts.exists(project["jd"]["content_hash"])
 
 
 def test_failed_project_can_be_resumed_from_where_it_failed(

@@ -505,6 +505,8 @@ export interface components {
             sandbox: components["schemas"]["SandboxStatus"];
             /** Version */
             version: string;
+            /** Worker Online */
+            worker_online: boolean;
         };
         /** TransitionRequest */
         TransitionRequest: {

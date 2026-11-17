@@ -33,6 +33,7 @@ class ArtifactStore(Protocol):
     def get_bytes(self, sha256: str) -> bytes: ...
     def fetch_to(self, sha256: str, dest: Path) -> None: ...
     def exists(self, sha256: str) -> bool: ...
+    def delete(self, sha256: str) -> None: ...
 
 
 def _check_hash(sha256: str) -> str:
@@ -115,3 +116,6 @@ class LocalArtifactStore:
 
     def exists(self, sha256: str) -> bool:
         return self._path(sha256).is_file()
+
+    def delete(self, sha256: str) -> None:
+        self._path(sha256).unlink(missing_ok=True)
