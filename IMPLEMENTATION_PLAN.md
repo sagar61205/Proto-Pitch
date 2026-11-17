@@ -11,16 +11,17 @@ the **Status** section at the end of every working session.
 |------|-------|
 | Architecture | **Approved by the owner** (revision 2.1, 2026-11-16). Unchanged by this plan revision. |
 | Implementation plan | **Revision 4** — milestone structure approved by the owner on 2026-11-16 subject to sequencing adjustments, which this revision incorporates |
-| Current handoff stage | H1 complete — stopped at the stage boundary |
-| Application code | None. No milestone is authorised. |
-| Next action | Owner selects the coding model for M1 and explicitly authorises M1. |
+| Current handoff stage | H2/H3 — M1 in progress |
+| Application code | M1 under implementation |
+| Next action | Complete M1 work items 1.1–1.7 and their acceptance criteria, write the handoff, stop. M2 is not authorised. |
 
 ### Authorisation
 
 | Milestone | Authorised |
 |-----------|------------|
 | M0 | Complete |
-| M1, M2, M3, M4A, M4H, M4S, M4B, M5, M6, M7, M8 | **No.** Each starts only when the owner authorises it here. |
+| M1 | **Yes — authorised by the owner on 2026-11-16** ("M1: Foundation, Sandbox and Job Engine") |
+| M2, M3, M4A, M4H, M4S, M4B, M5, M6, M7, M8 | **No.** Each starts only when the owner authorises it here. |
 
 ### Handoff stages (which coding model is working)
 
@@ -69,7 +70,7 @@ states them. Say so if any of them was not meant to be approved.
 
 | ID | Question | Needed by |
 |----|----------|-----------|
-| U8 | Which coding model works on M1 — the owner will select it before authorising M1 | M1 |
+| — | None. U8 was settled when the owner authorised M1 in the session that carries it out. | — |
 
 ---
 
