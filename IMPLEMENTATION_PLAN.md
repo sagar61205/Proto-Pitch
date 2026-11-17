@@ -11,16 +11,16 @@ the **Status** section at the end of every working session.
 |------|-------|
 | Architecture | **Approved by the owner** (revision 2.1, 2026-11-16). Unchanged by this plan revision. |
 | Implementation plan | **Revision 4** — milestone structure approved by the owner on 2026-11-16 subject to sequencing adjustments, which this revision incorporates |
-| Current handoff stage | H2/H3 — M1 in progress |
-| Application code | M1 under implementation |
-| Next action | Complete M1 work items 1.1–1.7 and their acceptance criteria, write the handoff, stop. M2 is not authorised. |
+| Current handoff stage | M1 complete — stopped, awaiting owner authorisation of M2 |
+| Application code | M1 implemented and tested (see "M1 result" below and `docs/handoffs/2026-11-17-M1.md`) |
+| Next action | Owner reviews M1, answers the three questions in the M1 handoff, and authorises M2. |
 
 ### Authorisation
 
 | Milestone | Authorised |
 |-----------|------------|
 | M0 | Complete |
-| M1 | **Yes — authorised by the owner on 2026-11-16** ("M1: Foundation, Sandbox and Job Engine") |
+| M1 | Authorised by the owner on 2026-11-16; **complete 2026-11-17** |
 | M2, M3, M4A, M4H, M4S, M4B, M5, M6, M7, M8 | **No.** Each starts only when the owner authorises it here. |
 
 ### Handoff stages (which coding model is working)
@@ -115,6 +115,27 @@ AC:
 
 Tests: state-machine property tests; job recovery and workspace re-materialisation tests;
 sandbox escape tests; no-Docker start-up test; API tests; one Playwright smoke test.
+
+#### M1 result (2026-11-17)
+
+All work items 1.1–1.7 are done. Acceptance criteria, each with the test that proves it:
+
+| Criterion | Result | Evidence |
+|-----------|--------|----------|
+| Fresh clone starts with one documented command, no keys, no model downloads | Pass | `make start` run on a fresh clone with a minimal environment; `test_real_server_starts_with_no_docker_no_keys_and_runs_a_job` |
+| Starts and serves the UI with Docker absent; probe reports generation unavailable; nothing else affected | Pass | `tests/test_no_docker.py` (2 tests) |
+| Two projects for the same company are independent records and directories | Pass | `test_two_projects_for_the_same_company_are_independent` |
+| Illegal state transitions rejected with a clear error | Pass | `tests/test_lifecycle.py` (18 tests incl. property tests); `test_illegal_transitions_are_rejected_with_a_clear_error` |
+| Killing the worker mid-job and restarting resumes from the last completed step | Pass | `test_killing_the_worker_mid_job_resumes_from_the_last_completed_step` (SIGKILL of a real worker process) |
+| A step completes correctly when its workspace directory is deleted between steps | Pass | `test_workspace_is_recovered_from_the_store_when_its_directory_disappears`, `test_a_stale_local_directory_is_not_trusted` |
+| Sandbox cannot read host environment, a planted secret file, another project's workspace, or reach the network; time and memory limits kill it | Pass | `tests/test_sandbox.py` (17 tests, real image) |
+| Sandbox image digest and lock hash recorded on the run | Pass | `test_selftest_job_records_digest_and_lock_hash_on_the_run` |
+
+Test results on the final commit: `make check` passed (74 backend tests, 10 frontend unit
+tests, 4 demo-shell tests, lint, strict type check, API-type drift check);
+`make sandbox-test` 17 passed; `make e2e` 2 passed; all four CI jobs succeeded on GitHub
+Actions. Details, limitations and open questions
+are in `docs/handoffs/2026-11-17-M1.md`.
 
 ### M2 — Intelligence
 
@@ -597,3 +618,5 @@ confirmation; nothing has been built or run yet.
 | 2026-11-16 | H1 | Owner approved the architecture in principle with ten revisions. Revision 2 written: model architecture reasoning with validation, G3 custom frontends, coding-agent execution contract, trusted-only shared demo host, quantitative claim validation, traceable verified claims, dependency workflow, explicit capability gaps, remote-ready seams, revised outreach rules. D1, D2, D3, D6 settled. Awaiting approval of revision 2 and open decisions. No application code. |
 | 2026-11-16 | H1 | Owner approved the architecture (revision 2) with three clarifications, incorporated as A25–A27: egress denied by default for dedicated cloud services, platform-owned evaluation, real coding-agent acceptance test. Plan revised to revision 3 to match. Awaiting approval of the plan, open decisions D5, D7, D8, U7, U8 and authorisation of M1. No application code. |
 | 2026-11-16 | H1 | Owner approved the milestone structure with sequencing adjustments. Plan revision 4: M4 split into M4A (complete Scenario A prototype), M4H (early manual/interactive handoff), M4S (early shareability) and M4B (remaining recipes and evaluators); outreach engine moved from M7 to M4S; M5 and M6.9 declared mandatory release gates. D5, D7, D8, U7 settled. Architecture unchanged. Awaiting the owner's choice of coding model and explicit authorisation of M1. No application code. |
+| 2026-11-16 | H1 | Final documentation corrections applied to AGENTS.md, DEVELOPMENT_GUIDE.md and docs/SPEC_REVIEW.md; M0 closed. Record: `docs/handoffs/2026-11-16-M0.md`. |
+| 2026-11-17 | H2/H3 | M1 complete: backend foundation, lifecycle, persistence, recoverable job engine, Docker sandbox with isolation suite, API, web interface, demo-shell scaffold, Makefile, CI, Compose, contributing and testing guides. All M1 acceptance criteria pass. Record: `docs/handoffs/2026-11-17-M1.md`. Stopped; M2 not authorised. |
