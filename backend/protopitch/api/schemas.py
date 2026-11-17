@@ -189,3 +189,9 @@ class ErrorBody(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorBody
+
+
+# Every error the API returns uses this envelope; declared so clients get a typed model.
+ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
+    code: {"model": ErrorResponse} for code in (403, 404, 409, 422, 503)
+}

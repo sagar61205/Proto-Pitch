@@ -1,0 +1,37 @@
+# Optional containerised local run:  docker compose up --build   →  http://127.0.0.1:8000
+# The native run (`make start`) is the default and needs no Docker at all.
+#
+# Security notes (docs/SPEC_REVIEW.md C10):
+# - Only the worker has the Docker socket. Socket access is equivalent to root on the
+#   host, so it is confined to the one service that must start sandbox containers.
+# - The API is published on the loopback interface only; there is no login in v1.
+# - The data directory is mounted at the same absolute path inside the containers as on
+#   the host, because the worker passes workspace paths to the host's Docker daemon.
+# - Build the sandbox image first (`make sandbox-images`); without it the platform still
+#   runs and reports generation as unavailable.
+
+x-platform: &platform
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.platform
+  environment:
+    PROTOPITCH_STORAGE__DATA_DIR: ${PWD}/data
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *platform
+    command: ["protopitch", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ${PWD}/data:${PWD}/data
+
+  worker:
+    <<: *platform
+    command: ["protopitch", "worker"]
+    volumes:
+      - ${PWD}/data:${PWD}/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - api

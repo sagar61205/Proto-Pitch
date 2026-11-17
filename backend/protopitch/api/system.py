@@ -6,10 +6,10 @@ from fastapi import APIRouter
 
 from protopitch import __version__
 from protopitch.api.deps import Ctx
-from protopitch.api.schemas import JobOut, ProfileOut, SandboxStatus, SystemStatus
+from protopitch.api.schemas import ERROR_RESPONSES, JobOut, ProfileOut, SandboxStatus, SystemStatus
 from protopitch.jobs.builtin import SANDBOX_SELFTEST
 
-router = APIRouter(tags=["system"])
+router = APIRouter(tags=["system"], responses=ERROR_RESPONSES)
 
 
 @router.get("/health")

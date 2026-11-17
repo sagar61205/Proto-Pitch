@@ -10,10 +10,10 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from protopitch.api.deps import Ctx
-from protopitch.api.schemas import JobOut
+from protopitch.api.schemas import ERROR_RESPONSES, JobOut
 from protopitch.jobs.backend import JobStatus
 
-router = APIRouter(tags=["jobs"])
+router = APIRouter(tags=["jobs"], responses=ERROR_RESPONSES)
 
 POLL_SECONDS = 0.4
 KEEPALIVE_SECONDS = 15.0

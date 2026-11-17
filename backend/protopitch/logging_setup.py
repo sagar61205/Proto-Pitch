@@ -43,6 +43,7 @@ def configure_logging(level: str = "INFO", redactor: Redactor | None = None) -> 
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logging.getLogger(name).handlers[:] = []
         logging.getLogger(name).propagate = True
+    logging.getLogger("alembic").setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger:

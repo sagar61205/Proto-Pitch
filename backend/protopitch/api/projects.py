@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from protopitch.api.deps import Actor, Ctx, Db
 from protopitch.api.schemas import (
+    ERROR_RESPONSES,
     ActionPlan,
     ApprovalCreate,
     ApprovalOut,
@@ -30,7 +31,7 @@ from protopitch.jobs.backend import JobStatus
 from protopitch.jobs.builtin import PROJECT_BOOTSTRAP
 from protopitch.services import ApprovalGate, audit, get_project, transition_project
 
-router = APIRouter(tags=["projects"])
+router = APIRouter(tags=["projects"], responses=ERROR_RESPONSES)
 
 DELETE_KIND = "project_delete"
 
