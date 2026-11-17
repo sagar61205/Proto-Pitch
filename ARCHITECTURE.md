@@ -162,6 +162,8 @@ All entities carry `id` (UUID), timestamps and, where relevant, `project_id` and
 | `Approval` | Recorded authorisation | kind, payload hash, decision, comment, time |
 | `BuildRun` | One generation attempt | proposal, generation mode, status, budgets, workspace ref |
 | `Job`, `Step` | Execution records | type, status, lease, attempt, input hash, log ref |
+| `JobEvent` | Progress and log lines of a job, streamed to the UI | job, step, level, message (redacted), time |
+| `WorkerStatus` | What each worker last reported | worker id, last seen, sandbox capability where that worker runs |
 | `RepairAttempt` | One diagnose-and-fix cycle | failure class, fixer, diff ref, outcome |
 | `CheckReport` | Result of a validation check | check type, critical flag, pass or fail, output ref |
 | `EvaluationReport`, `Metric` | Measured results | metric name, value, **kind**: `MEASURED`, `SYNTHETIC_EXPERIMENT`, `SIMULATED`, `ESTIMATE`, `NOT_EVALUATED`; **provenance**: `PLATFORM_COMPUTED`, `PLATFORM_VERIFIED`, `SELF_REPORTED`; critical flag; evaluator id and version; run id, seed, data hash |

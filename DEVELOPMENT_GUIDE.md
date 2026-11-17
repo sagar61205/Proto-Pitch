@@ -1,9 +1,7 @@
 # ProtoPitch — Development Guide
 
-Conventions for building the platform described in `ARCHITECTURE.md`. Sections marked
-*(from M1)* describe the intended setup; the repository contains documentation only until
-the owner authorises M1. Whoever implements M1 must make these commands real and correct
-this file where reality differs.
+Conventions for building the platform described in `ARCHITECTURE.md`. The commands below
+exist and are exercised by CI as of M1. See also `CONTRIBUTING.md` and `TESTING_GUIDE.md`.
 
 ## 1. Prerequisites
 
@@ -18,21 +16,35 @@ this file where reality differs.
 No model keys, local models or cloud accounts are needed to develop or run the
 deterministic pipeline.
 
-## 2. Setup and commands *(from M1)*
+## 2. Setup and commands
+
+Run from the repository root.
 
 ```bash
-make setup        # uv sync, npm install for frontend and demo-shell
-make sandbox-images  # build hash-pinned sandbox profile images (needs Docker and network)
-make dev          # API on 127.0.0.1:8000, worker, frontend dev server
-make check        # ruff, mypy, pytest, eslint, tsc, vitest — must pass before every commit
-make e2e          # Playwright and three-scenario end-to-end tests (needs Docker)
-make sandbox-test # sandbox escape suite
+make setup           # backend (uv) and frontend (npm) dependencies
+make start           # one command from a fresh clone: build the UI, run API + worker on :8000
+make dev             # API with reload, worker, Vite dev server on :5173
+make check           # format, lint, types, unit and integration tests, API-type drift
+make sandbox-images  # build the hash-pinned sandbox image (needs Docker and network)
+make sandbox-lock    # regenerate the sandbox dependency lock after editing requirements.in
+make sandbox-test    # sandbox isolation suite (needs Docker and the image)
+make e2e             # Playwright smoke test against the real server
+make api-types       # regenerate frontend API types from the backend's OpenAPI schema
+make probe           # report whether prototype generation is available
 ```
 
+`docker compose up --build` is an optional containerised run; the Docker socket is mounted
+only into the worker service (see comments in `docker-compose.yml`).
+
 Runtime state lives in `data/` (database, artifacts, workspaces) and is git-ignored.
-Configuration is `config/*.yaml` overridden by `PROTOPITCH_*` environment variables. Keys
-are read from the environment or OS keychain only; never commit them and never store them
-in the database.
+Configuration is `config/*.yaml`, overridden by `PROTOPITCH_<SECTION>__<KEY>` environment
+variables (for example `PROTOPITCH_SERVER__PORT=9000`). Unknown keys are rejected. Keys are
+read from the environment or OS keychain only; never commit them and never store them in
+the database.
+
+Building the sandbox image behind a TLS-inspecting proxy: set `PROTOPITCH_BUILD_NETWORK`,
+`PROTOPITCH_BUILD_CA_BUNDLE` and, if the default registry is unreachable,
+`PROTOPITCH_BUILD_BASE_IMAGE` (see `scripts/build_sandbox_images.py`).
 
 ## 3. Code conventions
 
@@ -81,7 +93,7 @@ Data files
 
 ### Conventions
 
-- Unit tests sit next to the feature area under `backend/tests/<module>/`.
+- Backend tests live in `backend/tests/`, one file per area (see `TESTING_GUIDE.md`).
 - Fixtures: JD fixtures in `backend/tests/fixtures/jds/` (Scenarios A–C, adversarial,
   non-English); web pages as saved files — tests never touch the live internet.
 - Provider tests use the `mock` adapter. A global test guard fails any test that opens an
@@ -99,6 +111,7 @@ Data files
 | Opportunity archetype | Add YAML under `taxonomy/archetypes/` | No |
 | Recipe | New directory with manifest, templates, class; register entry point; pass conformance suite | No |
 | Provider | Implement `LLMProvider`; register; document in `MODEL_PROVIDER_GUIDE.md` | No |
+| Job type | Module with `register(registry)`; list it in `jobs.extra_modules` or add it to the built-ins | No |
 | Sandbox driver | Implement `SandboxDriver`; pass escape suite | No |
 | Deployment target | Implement `DeploymentTarget`; approval-gate tests | No |
 | Lifecycle state or transition | Change transition table **and** `ARCHITECTURE.md` §5; owner approval | Yes |
