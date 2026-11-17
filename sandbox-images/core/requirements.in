@@ -1,0 +1,14 @@
+# Sandbox profile "core" (ARCHITECTURE §7.10). Generated prototypes that need nothing
+# beyond this profile build and run with the network disabled.
+# After editing, regenerate the lock:  make sandbox-lock
+numpy>=2.0
+pandas>=2.2
+scipy>=1.13
+scikit-learn>=1.5
+fastapi>=0.115
+uvicorn>=0.30
+httpx>=0.27
+pytest>=8
+rank-bm25>=0.2.2
+faiss-cpu>=1.8
+langgraph>=0.2

@@ -1,0 +1,15 @@
+# Hard limits. Bounded work is an invariant (AGENTS.md #9); raise these deliberately.
+jobs:
+  lease_seconds: 30
+  heartbeat_seconds: 5
+  poll_interval_seconds: 1.0
+  max_step_attempts: 3
+  job_deadline_seconds: 3600
+sandbox:
+  limits:
+    cpus: 2.0
+    memory_mb: 2048
+    pids: 256
+    timeout_seconds: 600
+    tmpfs_mb: 256
+    output_limit_bytes: 1000000

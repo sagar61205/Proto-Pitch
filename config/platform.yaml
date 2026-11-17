@@ -1,0 +1,21 @@
+# Platform configuration. Every value can be overridden with an environment variable:
+# PROTOPITCH_<SECTION>__<KEY>, for example PROTOPITCH_SERVER__PORT=9000.
+# No secrets belong in this file.
+server:
+  host: 127.0.0.1
+  port: 8000
+  # Host headers the API answers to. Protects a local, unauthenticated API from DNS rebinding.
+  allowed_hosts: [localhost, 127.0.0.1]
+  # Browser origins allowed to make state-changing requests (the Vite dev server).
+  allowed_origins: ["http://localhost:5173", "http://127.0.0.1:5173"]
+storage:
+  data_dir: data
+auth:
+  provider: local_no_auth
+sandbox:
+  driver: docker
+  docker_binary: docker
+  run_uid: 10001
+  profiles:
+    core:
+      image: protopitch-sbx-core
